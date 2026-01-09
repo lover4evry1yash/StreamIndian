@@ -1,4 +1,4 @@
- export const handler = async (event) => {
+export const handler = async (event) => {
   const parts = event.path.split('/');
   const type = parts[parts.length - 2];
 
@@ -15,14 +15,22 @@
     "Gangs of Wasseypur","Rang De Basanti","Barfi","Haider","Uri"
   ];
 
+  // limit + 1 trick for pagination
   const slice = allItems.slice(skip, skip + limit + 1);
 
-  const metas = slice.slice(0, limit).map((name, index) => ({
-    id: `streamindian:${type}:${skip + index}`,
-    type,
-    name,
-    poster: "https://via.placeholder.com/300x450?text=" + encodeURIComponent(name)
-  }));
+  const metas = slice.slice(0, limit).map((name) => {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
+    return {
+      id: `streamindian:${type}:${slug}`,
+      type,
+      name,
+      poster: "https://via.placeholder.com/300x450?text=" + encodeURIComponent(name)
+    };
+  });
 
   return {
     statusCode: 200,
