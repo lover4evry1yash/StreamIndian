@@ -2,48 +2,23 @@ export const handler = async (event) => {
   const parts = event.path.split('/');
   const type = parts[parts.length - 2];
 
-  // Read skip from query
   const skip = parseInt(event.queryStringParameters?.skip || "0", 10);
-  const limit = 20; // items per page
+  const limit = 20;
 
-  // Fake dataset (later replaced by TMDB)
   const allItems = [
-    "RRR",
-    "KGF Chapter 1",
-    "KGF Chapter 2",
-    "Baahubali: The Beginning",
-    "Baahubali: The Conclusion",
-    "Pushpa: The Rise",
-    "Pushpa 2",
-    "Vikram",
-    "Jailer",
-    "Leo",
-    "Salaar",
-    "Sita Ramam",
-    "3 Idiots",
-    "Dangal",
-    "Lagaan",
-    "Andhadhun",
-    "Drishyam",
-    "Drishyam 2",
-    "Pathaan",
-    "Jawan",
-    "Animal",
-    "Rocky Aur Rani",
-    "Brahmastra",
-    "Kabir Singh",
-    "Super 30",
-    "Chak De India",
-    "PK",
-    "Munna Bhai MBBS",
-    "Dil Chahta Hai",
-    "Swades"
+    "RRR","KGF Chapter 1","KGF Chapter 2","Baahubali: The Beginning",
+    "Baahubali: The Conclusion","Pushpa: The Rise","Pushpa 2","Vikram",
+    "Jailer","Leo","Salaar","Sita Ramam","3 Idiots","Dangal","Lagaan",
+    "Andhadhun","Drishyam","Drishyam 2","Pathaan","Jawan",
+    "Animal","Rocky Aur Rani","Brahmastra","Kabir Singh","Super 30",
+    "Chak De India","PK","Munna Bhai MBBS","Dil Chahta Hai","Swades",
+    "Gangs of Wasseypur","Rang De Basanti","Barfi","Haider","Uri"
   ];
 
-  // Slice based on skip
-  const page = allItems.slice(skip, skip + limit);
+  // 👇 IMPORTANT: request limit + 1
+  const slice = allItems.slice(skip, skip + limit + 1);
 
-  const metas = page.map((name, index) => ({
+  const metas = slice.slice(0, limit).map((name, index) => ({
     id: `streamindian:${skip + index}`,
     type,
     name,
