@@ -19,7 +19,7 @@ export const handler = async (event) => {
   const slice = allItems.slice(skip, skip + limit + 1);
 
   const metas = slice.slice(0, limit).map((name, index) => ({
-    id: `streamindian:${skip + index}`,
+    id: `streamindian:${type}:${skip + index}`
     type,
     name,
     poster: "https://via.placeholder.com/300x450?text=" + encodeURIComponent(name)
