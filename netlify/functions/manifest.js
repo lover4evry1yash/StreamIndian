@@ -11,12 +11,31 @@ export const handler = async () => {
         type: "movie",
         id: "streamindian-movies",
         name: "StreamIndian Movies"
-      },
+catalogs: [
+  {
+    type: "movie",
+    id: "streamindian-movies",
+    name: "StreamIndian Movies",
+    extra: [
       {
-        type: "series",
-        id: "streamindian-series",
-        name: "StreamIndian Series"
+        name: "skip",
+        isRequired: false
       }
+    ],
+    extraSupported: ["skip"]
+  },
+  {
+    type: "series",
+    id: "streamindian-series",
+    name: "StreamIndian Series",
+    extra: [
+      {
+        name: "skip",
+        isRequired: false
+      }
+    ],
+    extraSupported: ["skip"]
+  }
     ],
     logo: "https://streamindian.netlify.app/logo.png",
     background: "https://streamindian.netlify.app/bg.png"
