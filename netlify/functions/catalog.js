@@ -2,8 +2,10 @@ export const handler = async (event) => {
   const parts = event.path.split('/');
   const type = parts[parts.length - 2];
 
-  const skip = parseInt(event.queryStringParameters?.skip || "0", 10);
+  const rawSkip = parseInt(event.queryStringParameters?.skip || "0", 10);
   const limit = 20;
+  const page = Math.floor(rawSkip / limit);
+  const skip = page * limit;
 
   const allItems = [
     "RRR","KGF Chapter 1","KGF Chapter 2","Baahubali: The Beginning",
@@ -15,7 +17,6 @@ export const handler = async (event) => {
     "Gangs of Wasseypur","Rang De Basanti","Barfi","Haider","Uri"
   ];
 
-  // limit + 1 trick for pagination
   const slice = allItems.slice(skip, skip + limit + 1);
 
   const metas = slice.slice(0, limit).map((name) => {
