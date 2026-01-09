@@ -2,26 +2,53 @@ export const handler = async (event) => {
   const parts = event.path.split('/');
   const type = parts[parts.length - 2];
 
-  const metas = [
-    {
-      id: "streamindian:movie1",
-      type,
-      name: "RRR",
-      poster: "https://m.media-amazon.com/images/M/MV5BM2Y5Y2U3NzktZTE1OC00YjU4LTg2N2ItY2QzZTU5NWI4ZWI4XkEyXkFqcGc@._V1_.jpg"
-    },
-    {
-      id: "streamindian:movie2",
-      type,
-      name: "KGF Chapter 1",
-      poster: "https://m.media-amazon.com/images/M/MV5BN2Y0ZmUxZWMtZGU5NS00OWE5LWE4MjQtZDRmYmE3ZTM3OWFjXkEyXkFqcGc@._V1_.jpg"
-    },
-    {
-      id: "streamindian:movie3",
-      type,
-      name: "Baahubali: The Beginning",
-      poster: "https://m.media-amazon.com/images/M/MV5BN2RmM2NmZjctNDQ1Ni00Y2Y0LTg0OGYtZDJjYzZmNjg5Y2I2XkEyXkFqcGc@._V1_.jpg"
-    }
+  // Read skip from query
+  const skip = parseInt(event.queryStringParameters?.skip || "0", 10);
+  const limit = 20; // items per page
+
+  // Fake dataset (later replaced by TMDB)
+  const allItems = [
+    "RRR",
+    "KGF Chapter 1",
+    "KGF Chapter 2",
+    "Baahubali: The Beginning",
+    "Baahubali: The Conclusion",
+    "Pushpa: The Rise",
+    "Pushpa 2",
+    "Vikram",
+    "Jailer",
+    "Leo",
+    "Salaar",
+    "Sita Ramam",
+    "3 Idiots",
+    "Dangal",
+    "Lagaan",
+    "Andhadhun",
+    "Drishyam",
+    "Drishyam 2",
+    "Pathaan",
+    "Jawan",
+    "Animal",
+    "Rocky Aur Rani",
+    "Brahmastra",
+    "Kabir Singh",
+    "Super 30",
+    "Chak De India",
+    "PK",
+    "Munna Bhai MBBS",
+    "Dil Chahta Hai",
+    "Swades"
   ];
+
+  // Slice based on skip
+  const page = allItems.slice(skip, skip + limit);
+
+  const metas = page.map((name, index) => ({
+    id: `streamindian:${skip + index}`,
+    type,
+    name,
+    poster: "https://via.placeholder.com/300x450?text=" + encodeURIComponent(name)
+  }));
 
   return {
     statusCode: 200,
