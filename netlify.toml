@@ -3,3 +3,5 @@ publish = "/"
 
 [functions]
 directory = "netlify/functions"
+[build.environment]
+SECRETS_SCAN_OMIT_KEYS = "FALLBACK_LANGUAGE,DEFAULT_LANGUAGE,DEFAULT_COUNTRY"
