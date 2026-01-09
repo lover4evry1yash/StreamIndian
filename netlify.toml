@@ -5,3 +5,7 @@ publish = "/"
 directory = "netlify/functions"
 [build.environment]
 SECRETS_SCAN_OMIT_KEYS = "FALLBACK_LANGUAGE,DEFAULT_LANGUAGE,DEFAULT_COUNTRY"
+[[redirects]]
+  from = "/manifest.json"
+  to = "/.netlify/functions/manifest"
+  status = 200
