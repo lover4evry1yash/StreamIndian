@@ -1,6 +1,7 @@
 export const handler = async (event) => {
   const parts = event.path.split('/');
   const type = parts[parts.length - 2];
+  const catalogId = parts[parts.length - 1];
 
   const rawSkip = parseInt(event.queryStringParameters?.skip || "0", 10);
   const limit = 20;
@@ -26,7 +27,7 @@ export const handler = async (event) => {
       .replace(/(^-|-$)/g, "");
 
     return {
-      id: `streamindian:${type}:${slug}`,
+      id: `streamindian:${catalogId}:${type}:${slug}`,
       type,
       name,
       poster: "https://via.placeholder.com/300x450?text=" + encodeURIComponent(name)
