@@ -34,21 +34,25 @@ router.get('/manifest.json', () =>
     resources: ['catalog', 'meta', 'stream'],
     types: ['movie', 'series'],
     catalogs: [
-      {
-        type: 'movie',
-        id: 'streamindian.movies',
-        name: 'Movies',
-        extraSupported: ['skip', 'search']
-      },
-      {
-        type: 'series',
-        id: 'streamindian.series',
-        name: 'Series',
-        extraSupported: ['skip', 'search']
-      }
+  {
+    type: 'movie',
+    id: 'streamindian.movies',
+    name: 'Movies',
+    extra: [
+      { name: 'skip', isRequired: false },
+      { name: 'search', isRequired: false }
     ]
-  })
-)
+  },
+  {
+    type: 'series',
+    id: 'streamindian.series',
+    name: 'Series',
+    extra: [
+      { name: 'skip', isRequired: false },
+      { name: 'search', isRequired: false }
+    ]
+  }
+]
 
 
 router.get('/catalog/movie/:id.json', handleCatalogMovies)
