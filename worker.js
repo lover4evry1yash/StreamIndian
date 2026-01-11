@@ -1,20 +1,25 @@
 import { Router } from 'itty-router'
+
 import { handleCatalogMovies } from './src/catalog/movies.js'
 import { handleCatalogSeries } from './src/catalog/series.js'
+
 import { handleMetaMovie } from './src/meta/movie.js'
 import { handleMetaSeries } from './src/meta/series.js'
 import { handleMetaSeason } from './src/meta/season.js'
 import { handleMetaEpisode } from './src/meta/episode.js'
+
 import { handleStream } from './src/streams/torrent.js'
+
 import { handleAIHome } from './src/ai/homescreen.js'
 import { handleAISearch } from './src/ai/search.js'
-import { json } from './src/utils/response.js'
 
+import { json } from './src/utils/response.js'
 
 const router = Router()
 
-router.options('*', () =>
-  new Response(null, {
+/* -------------------- CORS -------------------- */
+router.options('*', () => {
+  return new Response(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
@@ -22,11 +27,11 @@ router.options('*', () =>
       'Access-Control-Allow-Headers': 'Content-Type'
     }
   })
-)
+})
 
-
-router.get('/manifest.json', () =>
-  json({
+/* -------------------- MANIFEST -------------------- */
+router.get('/manifest.json', () => {
+  return json({
     id: 'org.streamindian',
     version: '2.0.0',
     name: 'StreamIndian',
@@ -34,42 +39,51 @@ router.get('/manifest.json', () =>
     resources: ['catalog', 'meta', 'stream'],
     types: ['movie', 'series'],
     catalogs: [
-  {
-    type: 'movie',
-    id: 'streamindian.movies',
-    name: 'Movies',
-    extra: [
-      { name: 'skip', isRequired: false },
-      { name: 'search', isRequired: false }
+      {
+        type: 'movie',
+        id: 'streamindian.movies',
+        name: 'Movies',
+        extra: [
+          { name: 'skip', isRequired: false },
+          { name: 'search', isRequired: false }
+        ]
+      },
+      {
+        type: 'series',
+        id: 'streamindian.series',
+        name: 'Series',
+        extra: [
+          { name: 'skip', isRequired: false },
+          { name: 'search', isRequired: false }
+        ]
+      }
     ]
-  },
-  {
-    type: 'series',
-    id: 'streamindian.series',
-    name: 'Series',
-    extra: [
-      { name: 'skip', isRequired: false },
-      { name: 'search', isRequired: false }
-    ]
-  }
-]
+  })
+})
 
-
+/* -------------------- CATALOGS -------------------- */
 router.get('/catalog/movie/:id.json', handleCatalogMovies)
 router.get('/catalog/series/:id.json', handleCatalogSeries)
 
+/* -------------------- META -------------------- */
 router.get('/meta/movie/:id.json', handleMetaMovie)
 router.get('/meta/series/:id.json', handleMetaSeries)
 router.get('/meta/series/:id/season/:season.json', handleMetaSeason)
-router.get('/meta/series/:id/season/:season/episode/:episode.json', handleMetaEpisode)
+router.get(
+  '/meta/series/:id/season/:season/episode/:episode.json',
+  handleMetaEpisode
+)
 
+/* -------------------- STREAMS -------------------- */
 router.get('/stream/:type/:id.json', handleStream)
 
+/* -------------------- AI -------------------- */
 router.get('/ai/home', handleAIHome)
 router.get('/search/:query', handleAISearch)
 
+/* -------------------- FETCH -------------------- */
 export default {
-  fetch: async (request, env, ctx) => {
+  async fetch(request, env, ctx) {
     try {
       const response = await router.handle(request, env, ctx)
       if (response) return response
