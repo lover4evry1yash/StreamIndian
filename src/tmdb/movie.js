@@ -19,9 +19,12 @@ export async function tmdbMovieDetails(env, id) {
 export async function tmdbDiscoverMovies(env, page = 1) {
   const data = await tmdbFetch(env, '/discover/movie', {
     page,
-    sort_by: 'popularity.desc',
-    include_adult: false
+    sort_by: 'popularity.desc'
   })
 
-  return data.results || []
+  // 🔴 TEMP DEBUG: inject page number into results
+  return (data.results || []).map(m => ({
+    ...m,
+    __page: page
+  }))
 }
