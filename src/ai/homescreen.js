@@ -1,7 +1,7 @@
 import { aiSuggest } from './client.js'
 import { json } from '../utils/response.js'
 
-export async function aiHome(env) {
+async function aiHome(env) {
   const cacheKey = 'ai:home'
   const cached = await env.CACHE.get(cacheKey)
   if (cached) return JSON.parse(cached)
@@ -20,8 +20,21 @@ Return only titles, no descriptions.
     .split('\n')
     .map(t => t.replace(/^[\-\d\.]+/, '').trim())
     .filter(Boolean)
-    .slice(0, Number(env.MAX_RESULTS || 50))
 
-  await env.CACHE.put(cacheKey, JSON.stringify(titles), { expirationTtl: 21600 })
+  await env.CACHE.put(cacheKey, JSON.stringify(titles), {
+    expirationTtl: 21600
+  })
+
   return titles
+}
+
+export async function handleAIHome(request, env) {
+  const titles = await aiHome(env)
+
+  return json({
+    metas: titles.map(t => ({
+      id: t,
+      name: t
+    }))
+  })
 }
