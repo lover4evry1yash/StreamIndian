@@ -11,6 +11,18 @@ import { handleAISearch } from './src/ai/search.js'
 
 const router = Router()
 
+router.options('*', () =>
+  new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    }
+  })
+)
+
+
 router.get('/manifest.json', () => Response.json({
   id: 'org.streamindian',
   version: '2.0.0',
