@@ -1,12 +1,17 @@
-import { tmdbFetch } from './client.js'
+import { json } from '../utils/response.js'
+import { tmdbDiscoverMovies } from '../tmdb/movie.js'
+import { normalizeMeta } from './common.js'
 
-export async function tmdbTrendingMovies(env) {
-  const data = await tmdbFetch(env, '/trending/movie/week')
-  return data.results || []
-}
+const LIMIT = 20
 
-export async function tmdbMovieDetails(env, id) {
-  return tmdbFetch(env, `/movie/${id}`, {
-    append_to_response: 'credits,images,release_dates'
+export async function handleCatalogMovies(request, env) {
+  const url = new URL(request.url)
+  const skip = Number(url.searchParams.get('skip') || 0)
+
+  const page = Math.floor(skip / LIMIT) + 1
+  const items = await tmdbDiscoverMovies(env, page)
+
+  return json({
+    metas: items.map(i => normalizeMeta(i, 'movie'))
   })
 }
