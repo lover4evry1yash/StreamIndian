@@ -38,8 +38,16 @@ router.get('/ai/home', handleAIHome)
 router.get('/search/:query', handleAISearch)
 
 export default {
-  fetch: (request, env, ctx) =>
-    router.handle(request, env, ctx).catch(err =>
-      new Response(JSON.stringify({ error: err.message }), { status: 500 })
-    )
+  fetch: async (request, env, ctx) => {
+    try {
+      const response = await router.handle(request, env, ctx)
+      if (response) return response
+      return new Response('Not Found', { status: 404 })
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+  }
 }
