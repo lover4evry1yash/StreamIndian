@@ -1,7 +1,12 @@
 import { tmdbFetch } from './client.js'
 
 export async function tmdbTrendingMovies(env) {
-  const data = await tmdbFetch(env, '/trending/movie/week')
+  const data = await tmdbFetch(
+    env,
+    '/trending/movie/week',
+    {},
+    { useRegion: true }
+  )
   return data.results || []
 }
 
