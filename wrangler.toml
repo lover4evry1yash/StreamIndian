@@ -1,0 +1,7 @@
+name = "streamindian"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "866f924d86a6411ab951f48726070c31"

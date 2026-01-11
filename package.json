@@ -1,0 +1,8 @@
+{
+  "name": "streamindian",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "itty-router": "^4.0.0"
+  }
+}
