@@ -1,17 +1,23 @@
-import { json } from '../utils/response.js'
-import { tmdbDiscoverMovies } from '../tmdb/movie.js'
-import { normalizeMeta } from './common.js'
+import { tmdbFetch } from './client.js'
 
-const LIMIT = 20
+export async function tmdbTrendingMovies(env) {
+  const data = await tmdbFetch(env, '/trending/movie/week')
+  return data.results || []
+}
 
-export async function handleCatalogMovies(request, env) {
-  const url = new URL(request.url)
-  const skip = Number(url.searchParams.get('skip') || 0)
-
-  const page = Math.floor(skip / LIMIT) + 1
-  const items = await tmdbDiscoverMovies(env, page)
-
-  return json({
-    metas: items.map(i => normalizeMeta(i, 'movie'))
+export async function tmdbMovieDetails(env, id) {
+  return tmdbFetch(env, `/movie/${id}`, {
+    append_to_response: 'credits,images,release_dates'
   })
+}
+
+export async function tmdbDiscoverMovies(env, page = 1) {
+  const data = await tmdbFetch(env, '/discover/movie', {
+    page,
+    sort_by: 'popularity.desc',
+    with_original_language: 'hi|ta|te|ml|kn|en',
+    region: env.DEFAULT_COUNTRY || 'IN'
+  })
+
+  return data.results || []
 }

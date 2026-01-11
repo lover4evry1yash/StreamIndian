@@ -1,17 +1,27 @@
-import { json } from '../utils/response.js'
-import { tmdbDiscoverSeries } from '../tmdb/series.js'
-import { normalizeMeta } from './common.js'
+import { tmdbFetch } from './client.js'
 
-const LIMIT = 20
+export async function tmdbTrendingSeries(env) {
+  const data = await tmdbFetch(env, '/trending/tv/week')
+  return data.results || []
+}
 
-export async function handleCatalogSeries(request, env) {
-  const url = new URL(request.url)
-  const skip = Number(url.searchParams.get('skip') || 0)
-
-  const page = Math.floor(skip / LIMIT) + 1
-  const items = await tmdbDiscoverSeries(env, page)
-
-  return json({
-    metas: items.map(i => normalizeMeta(i, 'series'))
+export async function tmdbSeriesDetails(env, id) {
+  return tmdbFetch(env, `/tv/${id}`, {
+    append_to_response: 'credits,images'
   })
+}
+
+export async function tmdbSeasonDetails(env, id, season) {
+  return tmdbFetch(env, `/tv/${id}/season/${season}`)
+}
+
+export async function tmdbDiscoverSeries(env, page = 1) {
+  const data = await tmdbFetch(env, '/discover/tv', {
+    page,
+    sort_by: 'popularity.desc',
+    with_original_language: 'hi|ta|te|ml|kn|en',
+    region: env.DEFAULT_COUNTRY || 'IN'
+  })
+
+  return data.results || []
 }
