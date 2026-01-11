@@ -1,19 +1,20 @@
 import { json } from '../utils/response.js'
-import { tmdbDiscoverMovies } from '../tmdb/movie.js'
-import { normalizeMeta } from './common.js'
-
-const LIMIT = 20
+import { getPool } from '../pool/getPool.js'
 
 export async function handleCatalogMovies(request, env) {
   const url = new URL(request.url)
-  const skip = Number(url.searchParams.get('skip') || 0)
+  const skip = parseInt(url.searchParams.get('skip') || '0', 10)
+  const limit = 20
 
-  // Stremio skip → TMDB page
-  const page = Math.floor(skip / LIMIT) + 1
+  const items = await getPool('movie', env)
 
-  const items = await tmdbDiscoverMovies(env, page)
+  const slice = items.slice(skip, skip + limit + 1)
+  const metas = slice.slice(0, limit).map((item, index) => ({
+    id: `streamindian:movie:${skip + index}`,
+    type: 'movie',
+    name: item.title,
+    poster: item.poster
+  }))
 
-  return json({
-    metas: items.map(i => normalizeMeta(i, 'movie'))
-  })
+  return json({ metas })
 }

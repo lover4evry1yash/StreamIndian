@@ -1,17 +1,20 @@
 import { json } from '../utils/response.js'
-import { tmdbDiscoverSeries } from '../tmdb/series.js'
-import { normalizeMeta } from './common.js'
-
-const LIMIT = 20
+import { getPool } from '../pool/getPool.js'
 
 export async function handleCatalogSeries(request, env) {
   const url = new URL(request.url)
-  const skip = Number(url.searchParams.get('skip') || 0)
+  const skip = parseInt(url.searchParams.get('skip') || '0', 10)
+  const limit = 20
 
-  const page = Math.floor(skip / LIMIT) + 1
-  const items = await tmdbDiscoverSeries(env, page)
+  const items = await getPool('series', env)
 
-  return json({
-    metas: items.map(i => normalizeMeta(i, 'series'))
-  })
+  const slice = items.slice(skip, skip + limit + 1)
+  const metas = slice.slice(0, limit).map((item, index) => ({
+    id: `streamindian:series:${skip + index}`,
+    type: 'series',
+    name: item.title,
+    poster: item.poster
+  }))
+
+  return json({ metas })
 }
