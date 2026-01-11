@@ -1,36 +1,30 @@
-const DATA = {
-  movie: [
-    "RRR","KGF 1","KGF 2","Baahubali 1","Baahubali 2","Pushpa",
-    "Vikram","Jailer","Leo","Salaar","Sita Ramam","3 Idiots",
-    "Dangal","Lagaan","Andhadhun","Drishyam","Pathaan","Jawan",
-    "Animal","PK","Swades","Haider","Barfi","Uri"
-  ],
-  series: [
-    "Sacred Games","Mirzapur","Paatal Lok","The Family Man",
-    "Scam 1992","Asur","Delhi Crime","Aarya","Kota Factory",
-    "Panchayat","Gullak","Rocket Boys","Farzi","Special OPS"
-  ]
-};
-
 export const handler = async (event) => {
   const parts = event.path.split("/");
-  const type = parts.at(-2);
+  const type = parts[parts.length - 2]; // movie or series
 
-  const page = Number(event.queryStringParameters?.cursor || 0);
-  const LIMIT = 20;
+  const skip = parseInt(event.queryStringParameters?.skip || "0", 10);
+  const limit = 20;
 
-  const list = DATA[type] || [];
-  const start = page * LIMIT;
-  const end = start + LIMIT;
+  const allItems = [
+    "RRR","KGF Chapter 1","KGF Chapter 2","Baahubali: The Beginning",
+    "Baahubali: The Conclusion","Pushpa: The Rise","Pushpa 2","Vikram",
+    "Jailer","Leo","Salaar","Sita Ramam","3 Idiots","Dangal","Lagaan",
+    "Andhadhun","Drishyam","Drishyam 2","Pathaan","Jawan",
+    "Animal","Rocky Aur Rani","Brahmastra","Kabir Singh","Super 30",
+    "Chak De India","PK","Munna Bhai MBBS","Dil Chahta Hai","Swades",
+    "Gangs of Wasseypur","Rang De Basanti","Barfi","Haider","Uri"
+  ];
 
-  const metas = list.slice(start, end).map((name, idx) => ({
-    id: `streamindian:${type}:${start + idx}`, // stable ID
+  // ⭐ CRITICAL FIX: request limit + 1
+  const slice = allItems.slice(skip, skip + limit + 1);
+
+  // Return ONLY first 20
+  const metas = slice.slice(0, limit).map((name, index) => ({
+    id: `streamindian:${type}:${skip + index}`, // unique ID
     type,
     name,
     poster: `https://via.placeholder.com/300x450?text=${encodeURIComponent(name)}`
   }));
-
-  const hasNext = end < list.length;
 
   return {
     statusCode: 200,
@@ -38,9 +32,6 @@ export const handler = async (event) => {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*"
     },
-    body: JSON.stringify({
-      metas,
-      ...(hasNext && { nextCursor: String(page + 1) })
-    })
+    body: JSON.stringify({ metas })
   };
 };
