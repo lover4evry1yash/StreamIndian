@@ -1,15 +1,3 @@
-import { json } from '../utils/response.js'
-
-const LIMIT = 20
-
-export function paginate(items, skip) {
-  const slice = items.slice(skip, skip + LIMIT + 1)
-  return {
-    metas: slice.slice(0, LIMIT),
-    hasMore: slice.length > LIMIT
-  }
-}
-
 export function normalizeMeta(item, type) {
   return {
     id: `streamindian:${type}:${item.id}`,

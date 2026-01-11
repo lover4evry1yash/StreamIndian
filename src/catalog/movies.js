@@ -1,15 +1,19 @@
 import { json } from '../utils/response.js'
-import { paginate, normalizeMeta } from './common.js'
-import { tmdbTrendingMovies } from '../tmdb/movie.js'
+import { tmdbDiscoverMovies } from '../tmdb/movie.js'
+import { normalizeMeta } from './common.js'
+
+const LIMIT = 20
 
 export async function handleCatalogMovies(request, env) {
   const url = new URL(request.url)
-  const skip = parseInt(url.searchParams.get('skip') || '0', 10)
+  const skip = Number(url.searchParams.get('skip') || 0)
 
-  const items = await tmdbTrendingMovies(env)
-  const page = paginate(items, skip)
+  // Stremio skip → TMDB page
+  const page = Math.floor(skip / LIMIT) + 1
+
+  const items = await tmdbDiscoverMovies(env, page)
 
   return json({
-    metas: page.metas.map(i => normalizeMeta(i, 'movie'))
+    metas: items.map(i => normalizeMeta(i, 'movie'))
   })
 }
