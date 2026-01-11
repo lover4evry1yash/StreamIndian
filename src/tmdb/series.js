@@ -18,9 +18,7 @@ export async function tmdbSeasonDetails(env, id, season) {
 export async function tmdbDiscoverSeries(env, page = 1) {
   const data = await tmdbFetch(env, '/discover/tv', {
     page,
-    sort_by: 'popularity.desc',
-    with_original_language: 'hi|ta|te|ml|kn|en',
-    region: env.DEFAULT_COUNTRY || 'IN'
+    sort_by: 'popularity.desc'
   })
 
   return data.results || []

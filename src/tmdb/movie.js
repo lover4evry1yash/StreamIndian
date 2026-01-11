@@ -15,8 +15,7 @@ export async function tmdbDiscoverMovies(env, page = 1) {
   const data = await tmdbFetch(env, '/discover/movie', {
     page,
     sort_by: 'popularity.desc',
-    with_original_language: 'hi|ta|te|ml|kn|en',
-    region: env.DEFAULT_COUNTRY || 'IN'
+    include_adult: false
   })
 
   return data.results || []
