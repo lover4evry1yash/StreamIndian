@@ -13,6 +13,10 @@ export async function tmdbSeriesDetails(env, id) {
   })
 }
 
+export async function tmdbSeasonDetails(env, id, season) {
+  return tmdbFetch(env, `/tv/${id}/season/${season}`)
+}
+
 export async function tmdbDiscoverSeries(env, page = 1) {
   const data = await tmdbFetch(env, '/discover/tv', {
     page,
