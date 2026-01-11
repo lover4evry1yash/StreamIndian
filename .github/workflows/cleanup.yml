@@ -1,0 +1,104 @@
+name: Cleanup Repo for Cloudflare Worker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.REPO_TOKEN }}
+
+      - name: Remove all non-worker files
+        run: |
+          find . -maxdepth 1 ! -name "." ! -name ".git" ! -name ".github" ! -name ".gitignore" ! -name "README.md" -exec rm -rf {} \;
+          rm -rf netlify
+
+      - name: Create wrangler.toml
+        run: |
+          cat <<EOF > wrangler.toml
+          name = "streamindian"
+          main = "worker.js"
+          compatibility_date = "2023-01-01"
+          EOF
+
+      - name: Create worker.js
+        run: |
+          cat << 'EOF' > worker.js
+          export default {
+            async fetch(request) {
+              const url = new URL(request.url);
+              const path = url.pathname;
+
+              const headers = {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+              };
+
+              if (path === "/manifest.json") {
+                return new Response(JSON.stringify({
+                  id: "org.streamindian",
+                  version: "1.0.0",
+                  name: "StreamIndian",
+                  description: "Indian-focused streaming addon",
+                  resources: ["catalog"],
+                  types: ["movie", "series"],
+                  catalogs: [
+                    {
+                      type: "movie",
+                      id: "streamindian-movies",
+                      name: "StreamIndian Movies",
+                      extraSupported: ["skip"]
+                    },
+                    {
+                      type: "series",
+                      id: "streamindian-series",
+                      name: "StreamIndian Series",
+                      extraSupported: ["skip"]
+                    }
+                  ]
+                }), { headers });
+              }
+
+              if (path.startsWith("/catalog/")) {
+                const type = path.includes("series") ? "series" : "movie";
+                const skip = parseInt(url.searchParams.get("skip") || "0", 10);
+                const limit = 20;
+
+                const items = [
+                  "RRR","KGF Chapter 1","KGF Chapter 2","Baahubali",
+                  "Pushpa","Vikram","Leo","Jailer","Salaar","Sita Ramam",
+                  "3 Idiots","Dangal","Lagaan","Drishyam","Drishyam 2",
+                  "Pathaan","Jawan","Animal","PK","Swades",
+                  "Barfi","Haider","Uri","Andhadhun","Gangs of Wasseypur",
+                  "Rang De Basanti","Chak De India","Munna Bhai MBBS"
+                ];
+
+                const slice = items.slice(skip, skip + limit + 1);
+
+                const metas = slice.slice(0, limit).map((name, index) => ({
+                  id: `streamindian:${type}:${skip + index}`,
+                  type,
+                  name,
+                  poster: `https://via.placeholder.com/300x450?text=${encodeURIComponent(name)}`
+                }));
+
+                return new Response(JSON.stringify({ metas }), { headers });
+              }
+
+              return new Response("Not Found", { status: 404 });
+            }
+          };
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add .
+          git commit -m "Clean repo and convert to Cloudflare Worker" || echo "No changes"
+          git push
