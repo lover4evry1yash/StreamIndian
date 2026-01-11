@@ -16,5 +16,18 @@ export async function handleCatalogMovies(request, env) {
     poster: item.poster
   }))
 
-  return json({ metas })
+  return json({ const slice = items.slice(skip, skip + limit + 1)
+
+const metas = slice.slice(0, limit).map((item, index) => ({
+  id: `streamindian:movie:${skip + index}`,
+  type: 'movie',
+  name: item.title,
+  poster: item.poster
+}))
+
+return json({
+  metas,
+  hasMore: slice.length > limit
+})
+ })
 }

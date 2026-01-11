@@ -9,6 +9,7 @@ export async function handleCatalogSeries(request, env) {
   const items = await getPool('series', env)
 
   const slice = items.slice(skip, skip + limit + 1)
+
   const metas = slice.slice(0, limit).map((item, index) => ({
     id: `streamindian:series:${skip + index}`,
     type: 'series',
@@ -16,5 +17,8 @@ export async function handleCatalogSeries(request, env) {
     poster: item.poster
   }))
 
-  return json({ metas })
+  return json({
+    metas,
+    hasMore: slice.length > limit
+  })
 }
