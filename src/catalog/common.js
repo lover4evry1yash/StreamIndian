@@ -1,15 +1,13 @@
-/**
- * Canonical pagination helper for Stremio
- * DO NOT modify once pagination works
- */
 export function paginatePool(pool, skip, limit) {
   const safeSkip = Number(skip) || 0;
   const safeLimit = Number(limit) || 20;
 
-  // 🔑 FILTER FIRST — NEVER after slicing
-  const filtered = pool.filter(Boolean);
+  // 🔒 HARD GUARD — NEVER crash Stremio
+  if (!Array.isArray(pool)) {
+    return { slice: [], hasMore: false };
+  }
 
-  // 🔑 SLICE limit + 1
+  const filtered = pool.filter(Boolean);
   const slice = filtered.slice(safeSkip, safeSkip + safeLimit + 1);
 
   return {
