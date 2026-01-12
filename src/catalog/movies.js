@@ -1,13 +1,11 @@
 import { json } from '../utils/response.js';
 import { getPool } from '../pool/getPool.js';
 
-export async function handleCatalogMovies(request, env) {
-  const url = new URL(request.url);
-  const searchParam = url.searchParams.get('search') || '0';
-  const offset = parseInt(searchParam, 10);
+export async function handleCatalogMovies({ extra, env }) {
+  const offset = parseInt(extra?.search || '0', 10);
   const limit = 21;
 
-  const items = await getPool('movie', env);
+  const items = await getPool('movie', env) || [];
 
   if (offset >= items.length) {
     return json({ metas: [], hasMore: false });
