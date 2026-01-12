@@ -1,15 +1,11 @@
 import { paginatePool } from "./common.js";
 import { getPool } from "../pool/getPool.js";
 
-export async function handleCatalogMovies({ skip = 0, limit = 20 }) {
-  let pool = [];
+export async function handleCatalogMovies({ type, id, extra, env }) {
+  const skip = Number(extra?.skip) || 0;
+  const limit = Number(extra?.limit) || 20;
 
-  try {
-    pool = await getPool("movie");
-  } catch (e) {
-    console.error("Movie pool error:", e);
-  }
-
+  const pool = await getPool("movie", env);
   const { slice } = paginatePool(pool, skip, limit);
 
   return {

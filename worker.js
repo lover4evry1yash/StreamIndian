@@ -48,10 +48,10 @@ export default {
         let result = { metas: [] };
 
         if (type === "movie") {
-          result = await handleCatalogMovies({ type, id, extra });
-        } else if (type === "series") {
-          result = await handleCatalogSeries({ type, id, extra });
-        }
+  result = await handleCatalogMovies({ type, id, extra, env });
+} else if (type === "series") {
+  result = await handleCatalogSeries({ type, id, extra, env });
+}
 
         return new Response(JSON.stringify(result), {
           headers: { "content-type": "application/json" }

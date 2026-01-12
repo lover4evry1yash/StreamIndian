@@ -1,21 +1,34 @@
-export async function tmdbFetch(env, path, params = {}, options = {}) {
-  const url = new URL('https://api.themoviedb.org/3' + path)
+const TMDB_BASE = "https://api.themoviedb.org/3";
 
-  url.searchParams.set('api_key', env.TMDB_KEY)
+export function createTmdbClient(env) {
+  const API_KEY = env.TMDB_KEY;
 
-  // ✅ Only apply region when explicitly allowed
-  if (options.useRegion) {
-    url.searchParams.set('region', env.DEFAULT_COUNTRY || 'IN')
+  if (!API_KEY) {
+    throw new Error("TMDB_KEY missing in Cloudflare env");
   }
 
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null) {
-      url.searchParams.set(k, v)
+  async function request(path, params = {}) {
+    const url = new URL(TMDB_BASE + path);
+    url.searchParams.set("api_key", API_KEY);
+
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined) url.searchParams.set(k, v);
     }
+
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      throw new Error(`TMDB ${res.status}: ${path}`);
+    }
+
+    return res.json();
   }
 
-  const res = await fetch(url.toString())
-  if (!res.ok) throw new Error('TMDB error')
-
-  return res.json()
+  return {
+    movie: {
+      popular: () => request("/movie/popular"),
+    },
+    series: {
+      popular: () => request("/tv/popular"),
+    }
+  };
 }
