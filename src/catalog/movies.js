@@ -7,14 +7,14 @@ export async function handleCatalogMovies({ extra, env }) {
 
   let items = await getPool('movie', env) || [];
 
-  // Fallback dummies if real pool empty (remove once TMDB works)
+  // Fallback dummies if real pool is empty (remove this block later)
   if (items.length === 0) {
     items = [
-      { title: "Test Movie 1", poster: "https://via.placeholder.com/300x450?text=Movie+1" },
-      { title: "Test Movie 2", poster: "https://via.placeholder.com/300x450?text=Movie+2" },
-      { title: "Test Movie 3", poster: "https://via.placeholder.com/300x450?text=Movie+3" },
-      { title: "Test Movie 4", poster: "https://via.placeholder.com/300x450?text=Movie+4" },
-      { title: "Test Movie 5", poster: "https://via.placeholder.com/300x450?text=Movie+5" }
+      { title: "Test Movie One", poster: "https://via.placeholder.com/300x450?text=Movie+1" },
+      { title: "Test Movie Two", poster: "https://via.placeholder.com/300x450?text=Movie+2" },
+      { title: "Test Movie Three", poster: "https://via.placeholder.com/300x450?text=Movie+3" },
+      { title: "Test Movie Four", poster: "https://via.placeholder.com/300x450?text=Movie+4" },
+      { title: "Test Movie Five", poster: "https://via.placeholder.com/300x450?text=Movie+5" }
     ];
   }
 

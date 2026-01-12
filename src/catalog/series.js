@@ -7,7 +7,7 @@ export async function handleCatalogSeries({ extra, env }) {
 
   let items = await getPool('series', env) || [];
 
-  // Fallback dummies if real pool empty (remove once TMDB works)
+  // Fallback dummies to break the spinner (remove later)
   if (items.length === 0) {
     items = [
       { title: "Mirzapur", poster: "https://via.placeholder.com/300x450?text=Mirzapur" },
