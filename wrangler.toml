@@ -2,9 +2,7 @@ name = "streamindian"
 compatibility_date = "2026-01-01"
 main = "worker.js"
 
-# KV binding – exact match to dashboard variable name
+# KV binding – must match the Variable name in dashboard
 [[kv_namespaces]]
 binding = "STREAMINDIAN_CACHE"
 id = "866f924d86a6411ab951f48726070c31"
-
-# No [site] section – remove if present (fixes ENOENT error)
