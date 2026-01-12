@@ -1,19 +1,15 @@
 import { paginatePool } from "./common.js";
-import { getMoviePool } from "../pool/getPool.js";
+import { getPool } from "../pool/getPool.js";
 
-/**
- * Movie catalog handler
- * Pagination-safe. Deterministic. Stable.
- */
-export async function moviesCatalog({ skip = 0, limit = 20 }) {
-  // 🔒 MUST be deterministic
-  const pool = await getMoviePool();
+export async function handleCatalogMovies({ skip = 0, limit = 20 }) {
+  // 🔒 Deterministic pool
+  const pool = await getPool("movie");
 
   const { slice } = paginatePool(pool, skip, limit);
 
   return {
     metas: slice.slice(0, limit).map((movie) => ({
-      id: movie.id,          // 🔒 MUST be globally stable
+      id: movie.id,           // 🔒 MUST be stable
       type: "movie",
       name: movie.name,
       poster: movie.poster,
