@@ -7,7 +7,7 @@ export async function handleCatalogMovies({ extra, env }) {
 
   let items = await getPool('movie', env) || [];
 
-  // Fallback dummies if real pool is empty (remove this block later)
+  // Force dummies to ensure something shows (remove this block once real pool works)
   if (items.length === 0) {
     items = [
       { title: "Test Movie One", poster: "https://via.placeholder.com/300x450?text=Movie+1" },
@@ -16,6 +16,11 @@ export async function handleCatalogMovies({ extra, env }) {
       { title: "Test Movie Four", poster: "https://via.placeholder.com/300x450?text=Movie+4" },
       { title: "Test Movie Five", poster: "https://via.placeholder.com/300x450?text=Movie+5" }
     ];
+  }
+
+  // Safety: if somehow still no items, return valid empty
+  if (!Array.isArray(items)) {
+    items = [];
   }
 
   if (offset >= items.length) {

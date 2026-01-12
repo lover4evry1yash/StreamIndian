@@ -7,7 +7,7 @@ export async function handleCatalogSeries({ extra, env }) {
 
   let items = await getPool('series', env) || [];
 
-  // Fallback dummies to break the spinner (remove later)
+  // Force dummies to break spinner (remove once real pool works)
   if (items.length === 0) {
     items = [
       { title: "Mirzapur", poster: "https://via.placeholder.com/300x450?text=Mirzapur" },
@@ -16,6 +16,11 @@ export async function handleCatalogSeries({ extra, env }) {
       { title: "The Family Man", poster: "https://via.placeholder.com/300x450?text=Family+Man" },
       { title: "Scam 1992", poster: "https://via.placeholder.com/300x450?text=Scam+1992" }
     ];
+  }
+
+  // Safety: ensure items is array
+  if (!Array.isArray(items)) {
+    items = [];
   }
 
   if (offset >= items.length) {
