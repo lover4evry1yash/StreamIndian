@@ -5,9 +5,9 @@ export async function handleCatalogSeries({ extra, env }) {
   const offset = parseInt(extra?.search || '0', 10);
   const limit = 21;
 
-  const itemsFromPool = await getPool('series', env) || [];
+  let items = await getPool('series', env) || [];
 
-  let items = itemsFromPool;
+  // Fallback dummies if real pool empty (remove once TMDB works)
   if (items.length === 0) {
     items = [
       { title: "Mirzapur", poster: "https://via.placeholder.com/300x450?text=Mirzapur" },
@@ -27,7 +27,7 @@ export async function handleCatalogSeries({ extra, env }) {
     id: `streamindia:series:${offset + index}`,
     type: 'series',
     name: item.title || item.name || 'Untitled',
-    poster: item.poster || null,
+    poster: item.poster || null
   }));
 
   return json({
