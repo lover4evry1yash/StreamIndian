@@ -8,22 +8,19 @@ const manifest = {
   description: "Indian Movies and Series",
   resources: ["catalog"],
   types: ["movie", "series"],
-
-  // 🔑 THIS WAS MISSING BEFORE
-  idPrefixes: ["tmdb:", "demo:", "streamindian:"],
-
+  idPrefixes: ["tmdb:", "demo:", "streamindia:"],
   catalogs: [
     {
       type: "movie",
       id: "demo",
       name: "Movies",
-      extra: [{ name: "search", isRequired: false }]   // ← Added for infinite scroll
+      extra: [{ name: "search", isRequired: false }]
     },
     {
       type: "series",
       id: "demo",
       name: "Series",
-      extra: [{ name: "search", isRequired: false }]   // ← Added for infinite scroll
+      extra: [{ name: "search", isRequired: false }]
     }
   ]
 };
@@ -47,25 +44,33 @@ export default {
       const id = parts[2]?.replace(".json", "");
       const extra = Object.fromEntries(url.searchParams.entries());
 
+      // Fallback for invalid ID (prevents crash)
+      if (id !== "demo") {
+        console.log(`Invalid catalog ID: ${id} - returning empty`);
+        return new Response(JSON.stringify({ metas: [], hasMore: false }), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+
       try {
         if (type === "movie") {
-          return json(await handleCatalogMovies({ type, id, extra, env }));
+          return new Response(JSON.stringify(await handleCatalogMovies({ type, id, extra, env })), {
+            headers: { "content-type": "application/json" }
+          });
         }
         if (type === "series") {
-          return json(await handleCatalogSeries({ type, id, extra, env }));
+          return new Response(JSON.stringify(await handleCatalogSeries({ type, id, extra, env })), {
+            headers: { "content-type": "application/json" }
+          });
         }
       } catch (e) {
-        console.error(e);
-        return json({ metas: [] });
+        console.error("Catalog handler error:", e);
+        return new Response(JSON.stringify({ metas: [], hasMore: false }), {
+          headers: { "content-type": "application/json" }
+        });
       }
     }
 
     return new Response("Not found", { status: 404 });
   }
 };
-
-function json(data) {
-  return new Response(JSON.stringify(data), {
-    headers: { "content-type": "application/json" }
-  });
-}
