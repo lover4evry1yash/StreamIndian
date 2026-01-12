@@ -5,8 +5,13 @@ export async function handleCatalogMovies({ extra, env }) {
   console.log('handleCatalogMovies START - search:', extra?.search || '0');
 
   try {
-    const offset = Number(extra?.search || '0');
+    let offset = Number(extra?.search || '0');
     const limit = 21;
+
+    if (isNaN(offset) || offset < 0) {
+      console.log('Invalid offset - resetting to 0');
+      offset = 0;
+    }
 
     let items = await getPool('movie', env) || [];
 
@@ -17,11 +22,6 @@ export async function handleCatalogMovies({ extra, env }) {
         { title: "Test Movie Two", poster: "https://via.placeholder.com/300x450?text=Movie+2" },
         { title: "Test Movie Three", poster: "https://via.placeholder.com/300x450?text=Movie+3" }
       ];
-    }
-
-    if (isNaN(offset) || offset < 0) {
-      console.log('Invalid offset - resetting to 0');
-      offset = 0;
     }
 
     if (offset >= items.length) {

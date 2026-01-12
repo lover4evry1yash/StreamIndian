@@ -5,8 +5,13 @@ export async function handleCatalogSeries({ extra, env }) {
   console.log('handleCatalogSeries START - search:', extra?.search || '0');
 
   try {
-    const offset = Number(extra?.search || '0');
+    let offset = Number(extra?.search || '0');
     const limit = 21;
+
+    if (isNaN(offset) || offset < 0) {
+      console.log('Invalid offset - resetting to 0');
+      offset = 0;
+    }
 
     let items = await getPool('series', env) || [];
 
@@ -17,11 +22,6 @@ export async function handleCatalogSeries({ extra, env }) {
         { title: "Sacred Games", poster: "https://via.placeholder.com/300x450?text=Sacred+Games" },
         { title: "Paatal Lok", poster: "https://via.placeholder.com/300x450?text=Paatal+Lok" }
       ];
-    }
-
-    if (isNaN(offset) || offset < 0) {
-      console.log('Invalid offset - resetting to 0');
-      offset = 0;
     }
 
     if (offset >= items.length) {
