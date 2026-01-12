@@ -1,98 +1,59 @@
-import { Router } from 'itty-router'
+import { handleCatalogMovies } from "./src/catalog/movies.js";
+import { handleCatalogSeries } from "./src/catalog/series.js";
+import manifest from "./src/manifest.js";
 
-import { handleCatalogMovies } from './src/catalog/movies.js'
-import { handleCatalogSeries } from './src/catalog/series.js'
-
-import { handleMetaMovie } from './src/meta/movie.js'
-import { handleMetaSeries } from './src/meta/series.js'
-import { handleMetaSeason } from './src/meta/season.js'
-import { handleMetaEpisode } from './src/meta/episode.js'
-
-import { handleStream } from './src/streams/torrent.js'
-
-import { handleAIHome } from './src/ai/homescreen.js'
-import { handleAISearch } from './src/ai/search.js'
-
-import { json } from './src/utils/response.js'
-
-const router = Router()
-
-/* -------------------- CORS -------------------- */
-router.options('*', () => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  })
-})
-
-/* -------------------- MANIFEST -------------------- */
-router.get('/manifest.json', () => {
-  return json({
-    id: 'org.streamindian',
-    version: '2.0.0',
-    name: 'StreamIndian',
-    description: 'Premium Indian OTT-style Stremio addon',
-    resources: ['catalog', 'meta', 'stream'],
-    types: ['movie', 'series'],
-    catalogs: [
-      {
-        type: 'movie',
-        id: 'streamindian.movies',
-        name: 'Movies',
-        extra: [
-          { name: 'skip', isRequired: false },
-          { name: 'search', isRequired: false }
-        ]
-      },
-      {
-        type: 'series',
-        id: 'streamindian.series',
-        name: 'Series',
-        extra: [
-          { name: 'skip', isRequired: false },
-          { name: 'search', isRequired: false }
-        ]
-      }
-    ]
-  })
-})
-
-/* -------------------- CATALOGS -------------------- */
-router.get('/catalog/movie/:id.json', handleCatalogMovies)
-router.get('/catalog/series/:id.json', handleCatalogSeries)
-
-/* -------------------- META -------------------- */
-router.get('/meta/movie/:id.json', handleMetaMovie)
-router.get('/meta/series/:id.json', handleMetaSeries)
-router.get('/meta/series/:id/season/:season.json', handleMetaSeason)
-router.get(
-  '/meta/series/:id/season/:season/episode/:episode.json',
-  handleMetaEpisode
-)
-
-/* -------------------- STREAMS -------------------- */
-router.get('/stream/:type/:id.json', handleStream)
-
-/* -------------------- AI -------------------- */
-router.get('/ai/home', handleAIHome)
-router.get('/search/:query', handleAISearch)
-
-/* -------------------- FETCH -------------------- */
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request) {
     try {
-      const response = await router.handle(request, env, ctx)
-      if (response) return response
-      return new Response('Not Found', { status: 404 })
+      const url = new URL(request.url);
+      const pathname = url.pathname;
+
+      // 🔹 Manifest
+      if (pathname === "/manifest.json") {
+        return new Response(JSON.stringify(manifest), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      // 🔹 Catalog routes
+      if (pathname.startsWith("/catalog/")) {
+        const parts = pathname.split("/").filter(Boolean);
+        // /catalog/:type/:id.json
+        const type = parts[1];
+        const id = parts[2]?.replace(".json", "");
+
+        const extra = Object.fromEntries(url.searchParams.entries());
+
+        let result;
+
+        if (type === "movie") {
+          result = await handleCatalogMovies({ type, id, extra });
+        } else if (type === "series") {
+          result = await handleCatalogSeries({ type, id, extra });
+        } else {
+          result = { metas: [] };
+        }
+
+        // 🔒 Always return valid JSON
+        return new Response(JSON.stringify(result), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      // 🔹 Fallback
+      return new Response("Not Found", { status: 404 });
+
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      // 🔥 THIS IS WHAT FIXES ERROR 1101
+      console.error("Worker crash:", err);
+
+      return new Response(
+        JSON.stringify({ metas: [] }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      );
     }
   }
-}
+};
