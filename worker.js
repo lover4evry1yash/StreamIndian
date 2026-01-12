@@ -44,9 +44,9 @@ export default {
       const id = parts[2]?.replace(".json", "");
       const extra = Object.fromEntries(url.searchParams.entries());
 
-      // Fallback for invalid ID (prevents crash)
+      // Safety: wrong ID → return empty catalog
       if (id !== "demo") {
-        console.log(`Invalid catalog ID: ${id} - returning empty`);
+        console.log(`Invalid catalog ID: ${id}`);
         return new Response(JSON.stringify({ metas: [], hasMore: false }), {
           headers: { "content-type": "application/json" }
         });
@@ -64,7 +64,7 @@ export default {
           });
         }
       } catch (e) {
-        console.error("Catalog handler error:", e);
+        console.error("Catalog handler crash:", e.message);
         return new Response(JSON.stringify({ metas: [], hasMore: false }), {
           headers: { "content-type": "application/json" }
         });

@@ -5,27 +5,12 @@ export async function handleCatalogSeries({ extra, env }) {
   console.log('handleCatalogSeries START - search:', extra?.search || '0');
 
   try {
-    let offset = Number(extra?.search || '0');
+    const offset = parseInt(extra?.search || '0', 10);
     const limit = 21;
 
-    if (isNaN(offset) || offset < 0) {
-      console.log('Invalid offset - resetting to 0');
-      offset = 0;
-    }
-
-    let items = await getPool('series', env) || [];
-
-    if (items.length === 0) {
-      console.log('Series pool empty - injecting dummies');
-      items = [
-        { title: "Mirzapur", poster: "https://via.placeholder.com/300x450?text=Mirzapur" },
-        { title: "Sacred Games", poster: "https://via.placeholder.com/300x450?text=Sacred+Games" },
-        { title: "Paatal Lok", poster: "https://via.placeholder.com/300x450?text=Paatal+Lok" }
-      ];
-    }
+    const items = await getPool('series', env) || [];
 
     if (offset >= items.length) {
-      console.log('Series - end of list');
       return json({ metas: [], hasMore: false });
     }
 
@@ -36,8 +21,6 @@ export async function handleCatalogSeries({ extra, env }) {
       name: item.title || 'Untitled',
       poster: item.poster || null
     }));
-
-    console.log('Series - returning', metas.length, 'items, hasMore:', slice.length === limit);
 
     return json({
       metas,

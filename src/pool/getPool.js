@@ -2,29 +2,29 @@ export async function getPool(type, env) {
   console.log(`getPool called for type: ${type}`);
 
   const cacheKey = `${type}_pool`;
-  let items = await env.CACHE.get(cacheKey, { type: 'json' }) || [];
+  let items = await env.STREAMINDIAN_CACHE.get(cacheKey, { type: 'json' }) || [];
 
   if (items.length === 0) {
     console.log(`Cache miss for ${type} - fetching from TMDB`);
     try {
       const apiKey = env.TMDB_KEY;
-      if (!apiKey) throw new Error("TMDB_KEY missing");
+      if (!apiKey) throw new Error("TMDB_KEY not set");
 
-      const language = "hi-IN";
-      const region = "IN";
+      const language = 'hi-IN';
+      const region = 'IN';
       const page = 1;
 
-      let url = "";
-      if (type === "movie") {
+      let url = '';
+      if (type === 'movie') {
         url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=${language}&region=${region}&sort_by=popularity.desc&include_adult=false&page=${page}`;
-      } else if (type === "series") {
+      } else if (type === 'series') {
         url = `https://api.themoviedb.org/3/discover/tv?api_key=${apiKey}&language=${language}&region=${region}&sort_by=popularity.desc&include_adult=false&page=${page}`;
       }
 
-      if (!url) throw new Error("Invalid type");
+      if (!url) throw new Error('Invalid type');
 
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`TMDB error: ${response.status}`);
+      if (!response.ok) throw new Error(`TMDB fetch failed: ${response.status}`);
 
       const data = await response.json();
       items = data.results.map(item => ({
@@ -35,7 +35,8 @@ export async function getPool(type, env) {
 
       console.log(`Fetched ${items.length} items from TMDB for ${type}`);
 
-      await env.CACHE.put(cacheKey, JSON.stringify(items), { expirationTtl: 3600 });
+      // Cache for 1 hour
+      await env.STREAMINDIAN_CACHE.put(cacheKey, JSON.stringify(items), { expirationTtl: 3600 });
     } catch (err) {
       console.error(`getPool error for ${type}:`, err.message);
       items = [];
