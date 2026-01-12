@@ -1,26 +1,23 @@
-import { json } from '../utils/response.js'
-import { getPool } from '../pool/getPool.js'
+import { paginatePool } from "./common.js";
+import { getMoviePool } from "../pool/getPool.js";
 
-export async function handleCatalogMovies(request, env) {
-  const url = new URL(request.url)
-  const skip = parseInt(url.searchParams.get('skip') || '0', 10)
-  const limit = 20
+/**
+ * Movie catalog handler
+ * Pagination-safe. Deterministic. Stable.
+ */
+export async function moviesCatalog({ skip = 0, limit = 20 }) {
+  // 🔒 MUST be deterministic
+  const pool = await getMoviePool();
 
-  const items = await getPool('movie', env)
+  const { slice } = paginatePool(pool, skip, limit);
 
-  // ✅ logic FIRST
-  const slice = items.slice(skip, skip + limit + 1)
-
-  const metas = slice.slice(0, limit).map((item, index) => ({
-    id: `streamindian:movie:${skip + index}`,
-    type: 'movie',
-    name: item.title,
-    poster: item.poster
-  }))
-
-  // ✅ return SECOND
-  return json({
-    metas,
-    hasMore: slice.length > limit
-  })
+  return {
+    metas: slice.slice(0, limit).map((movie) => ({
+      id: movie.id,          // 🔒 MUST be globally stable
+      type: "movie",
+      name: movie.name,
+      poster: movie.poster,
+      background: movie.background || movie.poster
+    }))
+  };
 }

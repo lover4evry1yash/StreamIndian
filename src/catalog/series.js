@@ -1,24 +1,23 @@
-import { json } from '../utils/response.js'
-import { getPool } from '../pool/getPool.js'
+import { paginatePool } from "./common.js";
+import { getSeriesPool } from "../pool/getPool.js";
 
-export async function handleCatalogSeries(request, env) {
-  const url = new URL(request.url)
-  const skip = parseInt(url.searchParams.get('skip') || '0', 10)
-  const limit = 20
+/**
+ * Series catalog handler
+ * Pagination-safe. Deterministic. Stable.
+ */
+export async function seriesCatalog({ skip = 0, limit = 20 }) {
+  // 🔒 MUST be deterministic
+  const pool = await getSeriesPool();
 
-  const items = await getPool('series', env)
+  const { slice } = paginatePool(pool, skip, limit);
 
-  const slice = items.slice(skip, skip + limit + 1)
-
-  const metas = slice.slice(0, limit).map((item, index) => ({
-    id: `streamindian:series:${skip + index}`,
-    type: 'series',
-    name: item.title,
-    poster: item.poster
-  }))
-
-  return json({
-    metas,
-    hasMore: slice.length > limit
-  })
+  return {
+    metas: slice.slice(0, limit).map((series) => ({
+      id: series.id,        // 🔒 MUST be globally stable
+      type: "series",
+      name: series.name,
+      poster: series.poster,
+      background: series.background || series.poster
+    }))
+  };
 }
