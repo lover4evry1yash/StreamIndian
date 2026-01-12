@@ -5,9 +5,9 @@ export async function handleCatalogSeries({ extra, env }) {
   const offset = parseInt(extra?.search || '0', 10);
   const limit = 21;
 
-  let items = await getPool('series', env) || [];
+  const itemsFromPool = await getPool('series', env) || [];
 
-  // Force dummy data to break infinite loading and prove response works
+  let items = itemsFromPool;
   if (items.length === 0) {
     items = [
       { title: "Mirzapur", poster: "https://via.placeholder.com/300x450?text=Mirzapur" },
