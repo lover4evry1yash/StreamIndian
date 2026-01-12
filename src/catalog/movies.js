@@ -2,41 +2,49 @@ import { json } from '../utils/response.js';
 import { getPool } from '../pool/getPool.js';
 
 export async function handleCatalogMovies({ extra, env }) {
-  const offset = parseInt(extra?.search || '0', 10);
-  const limit = 21;
+  console.log('handleCatalogMovies START - search:', extra?.search || '0');
 
-  let items = await getPool('movie', env) || [];
+  try {
+    const offset = Number(extra?.search || '0');
+    const limit = 21;
 
-  // Force dummies to ensure something shows (remove this block once real pool works)
-  if (items.length === 0) {
-    items = [
-      { title: "Test Movie One", poster: "https://via.placeholder.com/300x450?text=Movie+1" },
-      { title: "Test Movie Two", poster: "https://via.placeholder.com/300x450?text=Movie+2" },
-      { title: "Test Movie Three", poster: "https://via.placeholder.com/300x450?text=Movie+3" },
-      { title: "Test Movie Four", poster: "https://via.placeholder.com/300x450?text=Movie+4" },
-      { title: "Test Movie Five", poster: "https://via.placeholder.com/300x450?text=Movie+5" }
-    ];
-  }
+    let items = await getPool('movie', env) || [];
 
-  // Safety: if somehow still no items, return valid empty
-  if (!Array.isArray(items)) {
-    items = [];
-  }
+    if (items.length === 0) {
+      console.log('Movies pool empty - injecting dummies');
+      items = [
+        { title: "Test Movie One", poster: "https://via.placeholder.com/300x450?text=Movie+1" },
+        { title: "Test Movie Two", poster: "https://via.placeholder.com/300x450?text=Movie+2" },
+        { title: "Test Movie Three", poster: "https://via.placeholder.com/300x450?text=Movie+3" }
+      ];
+    }
 
-  if (offset >= items.length) {
+    if (isNaN(offset) || offset < 0) {
+      console.log('Invalid offset - resetting to 0');
+      offset = 0;
+    }
+
+    if (offset >= items.length) {
+      console.log('Movies - end of list');
+      return json({ metas: [], hasMore: false });
+    }
+
+    const slice = items.slice(offset, offset + limit);
+    const metas = slice.slice(0, limit - 1).map((item, index) => ({
+      id: `streamindia:movie:${item.id || offset + index}`,
+      type: 'movie',
+      name: item.title || 'Untitled',
+      poster: item.poster || null
+    }));
+
+    console.log('Movies - returning', metas.length, 'items, hasMore:', slice.length === limit);
+
+    return json({
+      metas,
+      hasMore: slice.length === limit
+    });
+  } catch (err) {
+    console.error('handleCatalogMovies CRASH:', err.message);
     return json({ metas: [], hasMore: false });
   }
-
-  const slice = items.slice(offset, offset + limit);
-  const metas = slice.slice(0, limit - 1).map((item, index) => ({
-    id: `streamindia:movie:${offset + index}`,
-    type: 'movie',
-    name: item.title || 'Untitled',
-    poster: item.poster || null
-  }));
-
-  return json({
-    metas,
-    hasMore: slice.length === limit
-  });
 }
