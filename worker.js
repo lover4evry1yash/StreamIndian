@@ -17,13 +17,13 @@ const manifest = {
       type: "movie",
       id: "demo",
       name: "Movies",
-      extra: [{ name: "skip", isRequired: false }]
+      extra: [{ name: "search", isRequired: false }]   // ← Added for infinite scroll
     },
     {
       type: "series",
       id: "demo",
       name: "Series",
-      extra: [{ name: "skip", isRequired: false }]
+      extra: [{ name: "search", isRequired: false }]   // ← Added for infinite scroll
     }
   ]
 };
