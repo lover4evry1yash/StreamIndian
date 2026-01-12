@@ -1,19 +1,28 @@
-import { paginatePool } from "./common.js";
-import { getPool } from "../pool/getPool.js";
+import { json } from '../utils/response.js';
+import { getPool } from '../pool/getPool.js';
 
-export async function handleCatalogMovies({ type, id, extra, env }) {
-  const skip = Number(extra?.skip) || 0;
-  const limit = Number(extra?.limit) || 20;
+export async function handleCatalogMovies(request, env) {
+  const url = new URL(request.url);
+  const searchParam = url.searchParams.get('search') || '0';
+  const offset = parseInt(searchParam, 10);
+  const limit = 21;
 
-  const pool = await getPool("movie", env);
-  const { slice } = paginatePool(pool, skip, limit);
+  const items = await getPool('movie', env);
 
-  return {
-    metas: slice.slice(0, limit).map(movie => ({
-      id: movie.id,
-      type: "movie",
-      name: movie.name,
-      poster: movie.poster
-    }))
-  };
+  if (offset >= items.length) {
+    return json({ metas: [], hasMore: false });
+  }
+
+  const slice = items.slice(offset, offset + limit);
+  const metas = slice.slice(0, limit - 1).map((item, index) => ({
+    id: `streamindia:movie:${offset + index}`,
+    type: 'movie',
+    name: item.title || 'Untitled',
+    poster: item.poster || null,
+  }));
+
+  return json({
+    metas,
+    hasMore: slice.length === limit
+  });
 }

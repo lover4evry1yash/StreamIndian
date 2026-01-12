@@ -1,0 +1,41 @@
+import { json } from '../utils/response.js';
+import { getPool } from '../pool/getPool.js';   // assuming this is your movie pool function
+
+export async function handleCatalogMovies(request, env) {
+  const url = new URL(request.url);
+
+  // Use 'search' param as cursor (offset) — this is what enables reliable infinite scroll
+  const searchParam = url.searchParams.get('search') || '0';
+  const offset = parseInt(searchParam, 10);
+  const limit = 21;  // fetch one extra to detect if more exists
+
+  // Get the stable, cached pool of movies
+  const items = await getPool('movie', env);
+
+  // If we've reached the end of the pool
+  if (offset >= items.length) {
+    return json({
+      metas: [],
+      hasMore: false
+    });
+  }
+
+  // Slice the next batch
+  const slice = items.slice(offset, offset + limit);
+
+  // Map to Stremio meta objects (stable absolute IDs)
+  const metas = slice.slice(0, limit - 1).map((item, index) => ({
+    id: `streamindia:movie:${offset + index}`,  // absolute, stable ID
+    type: 'movie',
+    name: item.title || 'Untitled',
+    poster: item.poster || null,
+    // You can add more fields later: genres, description, releaseYear, etc.
+    // background: item.backdrop,
+    // logo: item.logo,
+  }));
+
+  return json({
+    metas,
+    hasMore: slice.length === limit   // true only if we got the full extra item
+  });
+}

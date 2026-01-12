@@ -3,6 +3,8 @@ import { getPool } from '../pool/getPool.js';
 
 export async function handleCatalogSeries(request, env) {
   const url = new URL(request.url);
+const items = await getPool('series', env);
+console.log(`Series pool size: ${items.length}`);
 
   // Use 'search' param as cursor (offset) — enables reliable infinite scroll
   const searchParam = url.searchParams.get('search') || '0';
