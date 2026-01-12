@@ -1,7 +1,8 @@
+import { addonBuilder } from "stremio-addon-sdk";
 import { handleCatalogMovies } from "./src/catalog/movies.js";
 import { handleCatalogSeries } from "./src/catalog/series.js";
 
-const manifest = {
+const builder = new addonBuilder({
   id: "org.streamindian",
   version: "1.0.0",
   name: "StreamIndian",
@@ -22,55 +23,30 @@ const manifest = {
       extra: [{ name: "skip", isRequired: false }]
     }
   ]
-};
+});
+
+builder.defineCatalogHandler(async (args) => {
+  try {
+    if (args.type === "movie") {
+      return await handleCatalogMovies(args);
+    }
+
+    if (args.type === "series") {
+      return await handleCatalogSeries(args);
+    }
+
+    return { metas: [] };
+  } catch (err) {
+    console.error("Catalog error:", err);
+    return { metas: [] };
+  }
+});
+
+const addonInterface = builder.getInterface();
 
 export default {
-  async fetch(request) {
-    try {
-      const url = new URL(request.url);
-      const pathname = url.pathname;
-
-      // ✅ Manifest
-      if (pathname === "/manifest.json") {
-        return new Response(JSON.stringify(manifest), {
-          headers: { "content-type": "application/json" }
-        });
-      }
-
-      // ✅ Catalog
-      if (pathname.startsWith("/catalog/")) {
-        const parts = pathname.split("/").filter(Boolean);
-        // /catalog/:type/:id.json
-        const type = parts[1];
-        const id = parts[2]?.replace(".json", "");
-        const extra = Object.fromEntries(url.searchParams.entries());
-
-        let result = { metas: [] };
-
-        if (type === "movie") {
-  result = await handleCatalogMovies({ type, id, extra, env });
-} else if (type === "series") {
-  result = await handleCatalogSeries({ type, id, extra, env });
-}
-
-        return new Response(JSON.stringify(result), {
-          headers: { "content-type": "application/json" }
-        });
-      }
-
-      return new Response("Not Found", { status: 404 });
-
-    } catch (err) {
-      // 🔒 Prevent Cloudflare Error 1101
-      console.error("Worker crash:", err);
-
-      return new Response(
-        JSON.stringify({ metas: [] }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        }
-      );
-    }
+  fetch(request, env) {
+    // 🔑 this injects env correctly for Cloudflare
+    return addonInterface.fetch(request, env);
   }
 };
