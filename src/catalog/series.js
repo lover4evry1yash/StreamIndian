@@ -7,15 +7,14 @@ export async function handleCatalogSeries({ extra, env }) {
 
   let items = await getPool('series', env) || [];
 
-  // Temporary fallback dummy data if pool empty (remove later once TMDB works)
+  // Force dummy data to break infinite loading and prove response works
   if (items.length === 0) {
     items = [
-      { title: "Mirzapur", poster: "https://image.tmdb.org/t/p/w500/8Uu0t4l4JTu3fI3s3kR3p4wG0eE.jpg" },
-      { title: "Sacred Games", poster: "https://image.tmdb.org/t/p/w500/6q3w9v6U9j4q8j9k5q2q2q2q2q2q.jpg" },
-      { title: "Paatal Lok", poster: "https://image.tmdb.org/t/p/w500/5q2q2q2q2q2q2q2q2q2q2q2q2q.jpg" },
-      { title: "The Family Man", poster: "https://image.tmdb.org/t/p/w500/7q7q7q7q7q7q7q7q7q7q7q7q7q.jpg" },
-      { title: "Scam 1992", poster: "https://image.tmdb.org/t/p/w500/9q9q9q9q9q9q9q9q9q9q9q9q9q.jpg" },
-      // Add 10-20 more if needed for testing scroll
+      { title: "Mirzapur", poster: "https://via.placeholder.com/300x450?text=Mirzapur" },
+      { title: "Sacred Games", poster: "https://via.placeholder.com/300x450?text=Sacred+Games" },
+      { title: "Paatal Lok", poster: "https://via.placeholder.com/300x450?text=Paatal+Lok" },
+      { title: "The Family Man", poster: "https://via.placeholder.com/300x450?text=Family+Man" },
+      { title: "Scam 1992", poster: "https://via.placeholder.com/300x450?text=Scam+1992" }
     ];
   }
 

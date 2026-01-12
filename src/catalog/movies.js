@@ -7,6 +7,15 @@ export async function handleCatalogMovies({ extra, env }) {
 
   const items = await getPool('movie', env) || [];
 
+  // Temporary debug fallback if pool empty
+  if (items.length === 0) {
+    items = [
+      { title: "Test Movie 1", poster: "https://via.placeholder.com/300x450?text=Movie1" },
+      { title: "Test Movie 2", poster: "https://via.placeholder.com/300x450?text=Movie2" },
+      { title: "Test Movie 3", poster: "https://via.placeholder.com/300x450?text=Movie3" }
+    ];
+  }
+
   if (offset >= items.length) {
     return json({ metas: [], hasMore: false });
   }
