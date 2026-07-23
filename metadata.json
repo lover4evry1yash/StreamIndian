@@ -1,0 +1,6 @@
+{
+  "name": "StreamIndian Tizen TV",
+  "description": "Samsung Tizen TV-first streaming application for Indian media discovery with spatial remote navigation, AVPlay integration, and catalog browsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

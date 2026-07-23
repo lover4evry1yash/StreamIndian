@@ -1,0 +1,50 @@
+import { IStreamResolver, TorrentMetadata, StreamResolution } from '../types';
+
+export class EasyDebridResolver implements IStreamResolver {
+  public readonly id = 'easydebrid';
+  public readonly name = 'EasyDebrid';
+  public readonly priority: number = 50;
+  private apiKey: string;
+  private isAvailable: boolean = false;
+  private latencyMs: number = 0;
+  private reliability: number = 100;
+  private failureCount: number = 0;
+  private lastSuccessfulResolution?: number;
+  private averageResolveTimeMs: number = 0;
+  private totalResolutions: number = 0;
+
+
+  constructor(apiKey: string = '') {
+    this.apiKey = apiKey;
+  }
+
+  public async initialize(): Promise<void> {
+    if (this.apiKey) {
+      this.isAvailable = true;
+    }
+  }
+
+  public async healthCheck(): Promise<boolean> {
+    return this.isAvailable;
+  }
+
+  public getHealth(): import('../types').ResolverHealth {
+    return {
+      isAvailable: this.isAvailable,
+      latencyMs: this.latencyMs,
+      reliability: this.reliability,
+      failureCount: this.failureCount,
+      lastSuccessfulResolution: this.lastSuccessfulResolution,
+      averageResolveTimeMs: this.averageResolveTimeMs
+    };
+  }
+
+  public supports(type: 'torrent' | 'url', payload: any): boolean {
+    return type === 'torrent';
+  }
+
+
+  public async resolveTorrent(torrent: TorrentMetadata): Promise<StreamResolution[]> {
+    return [];
+  }
+}
