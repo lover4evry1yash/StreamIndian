@@ -46,19 +46,6 @@ export class StremioProvider implements ISourceProvider {
     // Abstracting out the fetch
     const sources: CanonicalStreamSource[] = [];
     
-    sources.push({
-        id: `stremio_mock_${query.mediaId}`,
-        title: 'Torrentio: 1080p [RD+]',
-        type: query.type,
-        sourceType: 'torrent',
-        infoHash: 'stremiohash12345',
-        quality: '1080p FHD',
-        codec: 'H264',
-        provider: 'Torrentio',
-        score: 105,
-        seeders: 50
-    });
-    
     return sources;
   }
 }

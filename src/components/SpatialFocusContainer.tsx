@@ -14,6 +14,7 @@ interface SpatialFocusContextType {
   registerFocusable: (id: string, element: HTMLElement, groupId: string, onSelected?: () => void) => void;
   unregisterFocusable: (id: string) => void;
   registerGroup: (groupName: string, trapFocus?: boolean) => void;
+  setActiveGroup: (groupName: string) => void;
 }
 
 const SpatialFocusContext = createContext<SpatialFocusContextType | null>(null);
@@ -85,6 +86,7 @@ export const SpatialFocusProvider: React.FC<SpatialFocusProviderProps> = ({ chil
         registerFocusable,
         unregisterFocusable,
         registerGroup,
+        setActiveGroup: (id) => navManager.focusEngine.setActiveGroup(id),
       }}
     >
       {children}

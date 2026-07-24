@@ -50,7 +50,9 @@ export class AVPlayManager {
       this.videoElement.onpause = () => {
         this.setState(AVPlayPlayerState.PAUSED);
       };
-      this.videoElement.onerror = () => {
+      this.videoElement.onerror = (event: any) => {
+        const error = this.videoElement?.error;
+        console.error('[AVPlayManager] HTML5 Video Error:', error?.message || event, error?.code);
         this.setState(AVPlayPlayerState.ERROR);
       };
     }
@@ -65,56 +67,88 @@ export class AVPlayManager {
     this.setState(AVPlayPlayerState.IDLE);
 
     if (this.isNativeAVPlay) {
-      try {
-        const avplay = (window as any).webapis.avplay;
-        avplay.open(stream.url);
+      return new Promise<void>((resolve, reject) => {
+        try {
+          const avplay = (window as any).webapis.avplay;
+          avplay.open(stream.url);
 
-        // Set display rectangle for Tizen TV AVPlay overlay
-        avplay.setDisplayRect(0, 0, window.innerWidth, window.innerHeight);
+          // Set display rectangle for Tizen TV AVPlay overlay
+          avplay.setDisplayRect(0, 0, window.innerWidth, window.innerHeight);
 
-        avplay.setListener({
-          onbufferingstart: () => {
-            this.bufferingPercentage = 0;
-            this.notifyListeners();
-          },
-          onbufferingprogress: (percent: number) => {
-            this.bufferingPercentage = percent;
-            this.notifyListeners();
-          },
-          onbufferingcomplete: () => {
-            this.bufferingPercentage = 100;
-            this.notifyListeners();
-          },
-          oncurrentplaytime: (timeMs: number) => {
-            this.currentTime = timeMs / 1000;
-            this.notifyListeners();
-          },
-          onstreamcompleted: () => {
-            this.setState(AVPlayPlayerState.STOPPED);
-          },
-          onerror: (error: any) => {
-            console.error('[AVPlay Native Error]', error);
-            this.setState(AVPlayPlayerState.ERROR);
-          }
-        });
+          avplay.setListener({
+            onbufferingstart: () => {
+              this.bufferingPercentage = 0;
+              this.notifyListeners();
+            },
+            onbufferingprogress: (percent: number) => {
+              this.bufferingPercentage = percent;
+              this.notifyListeners();
+            },
+            onbufferingcomplete: () => {
+              this.bufferingPercentage = 100;
+              this.notifyListeners();
+            },
+            oncurrentplaytime: (timeMs: number) => {
+              this.currentTime = timeMs / 1000;
+              this.notifyListeners();
+            },
+            onstreamcompleted: () => {
+              this.setState(AVPlayPlayerState.STOPPED);
+            },
+            onerror: (error: any) => {
+              console.error('[AVPlay Native Error]', error);
+              this.setState(AVPlayPlayerState.ERROR);
+            }
+          });
 
-        avplay.prepare();
-        this.duration = avplay.getDuration() / 1000;
-        if (startTimeSeconds > 0) {
-          avplay.seekTo(startTimeSeconds * 1000);
+          avplay.prepareAsync(
+            () => {
+              try {
+                this.duration = avplay.getDuration() / 1000;
+                if (startTimeSeconds > 0) {
+                  avplay.seekTo(startTimeSeconds * 1000);
+                }
+                this.setState(AVPlayPlayerState.PREPARED);
+                resolve();
+              } catch (err) {
+                console.error('[AVPlay Post-Prepare Error]', err);
+                reject(err);
+              }
+            },
+            (error: any) => {
+              console.error('[AVPlay PrepareAsync Error]', error);
+              this.setState(AVPlayPlayerState.ERROR);
+              reject(error);
+            }
+          );
+        } catch (e) {
+          console.error('[AVPlay Prepare Error]', e);
+          this.setState(AVPlayPlayerState.ERROR);
+          reject(e);
         }
-        this.setState(AVPlayPlayerState.PREPARED);
-      } catch (e) {
-        console.error('[AVPlay Prepare Error]', e);
-        this.setState(AVPlayPlayerState.ERROR);
-      }
+      });
     } else {
       // HTML5 emulation
-      if (this.videoElement) {
-        this.videoElement.src = stream.url;
-        this.videoElement.currentTime = startTimeSeconds;
-        this.setState(AVPlayPlayerState.PREPARED);
-      }
+      return new Promise<void>((resolve, reject) => {
+        if (this.videoElement) {
+          this.videoElement.onloadedmetadata = () => {
+             this.duration = this.videoElement?.duration || 0;
+             this.videoElement!.currentTime = startTimeSeconds;
+             this.setState(AVPlayPlayerState.PREPARED);
+             resolve();
+          };
+          this.videoElement.onerror = (e: any) => {
+             const err = this.videoElement?.error;
+             console.error('[AVPlayManager] HTML5 Video Error:', err?.message || e);
+             this.setState(AVPlayPlayerState.ERROR);
+             reject(err || e);
+          };
+          this.videoElement.src = stream.url;
+          this.videoElement.load();
+        } else {
+          reject(new Error("No video element registered"));
+        }
+      });
     }
   }
 
@@ -174,7 +208,7 @@ export class AVPlayManager {
       }
     } else if (this.videoElement) {
       this.videoElement.pause();
-      this.videoElement.src = '';
+      this.videoElement.removeAttribute('src');
     }
     this.setState(AVPlayPlayerState.STOPPED);
   }

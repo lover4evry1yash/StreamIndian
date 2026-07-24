@@ -197,7 +197,8 @@ export class ImageManager {
         finalBlobUrl = await this.downloadImageAsBlob(req.url);
       }
     } catch (e) {
-      this.logger.error(`ImageManager: Failed to load ${req.url}`, e);
+      const cleanUrl = req.url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
+      this.logger.debug(`ImageManager: Failed to load ${cleanUrl}`, e);
     }
 
     this.currentLoads--;
@@ -210,7 +211,8 @@ export class ImageManager {
       req.resolveCallbacks.forEach(cb => cb(finalBlobUrl));
     } else {
       this.diagnostics.failedLoads++;
-      req.resolveCallbacks.forEach(cb => cb(null));
+      const placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      req.resolveCallbacks.forEach(cb => cb(placeholder));
       this.requests.delete(req.url); // Allow retry later
     }
     req.resolveCallbacks = [];

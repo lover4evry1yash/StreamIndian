@@ -54,6 +54,7 @@ export type EventMap = {
   'TRANSFER_STARTED': { infoHash: string, providerId: string, transferId: string, title?: string };
   'TRANSFER_ERROR': { infoHash: string, providerId: string, status?: import('./streams/debrid/types').TransferStatus, message?: string };
   'TRANSFER_PROGRESS': { infoHash: string, providerId: string, status?: import('./streams/debrid/types').TransferStatus };
+  'stream:state_changed': any;
 };
 
 export class EventBus {

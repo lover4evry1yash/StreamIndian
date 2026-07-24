@@ -28,10 +28,15 @@ export class FanartClient {
     this.settings = settings;
   }
 
+  private hasLoggedMissingKey = false;
+
   private async fetch<T>(path: string): Promise<T | null> {
     const apiKey = this.settings.getSettings().providers?.fanart?.apiKey;
     if (!apiKey) {
-      this.logger.warn('Fanart API Key not configured');
+      if (!this.hasLoggedMissingKey) {
+          this.logger.debug('Fanart API Key not configured. Disabling gracefully.');
+          this.hasLoggedMissingKey = true;
+      }
       return null;
     }
     const url = `${BASE_URL}${path}?api_key=${apiKey}`;

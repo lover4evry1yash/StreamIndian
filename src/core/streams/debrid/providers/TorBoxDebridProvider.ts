@@ -87,7 +87,7 @@ export class TorBoxDebridProvider implements IDebridProvider {
 
   public async resolve(infoHash: string): Promise<string | null> {
     this.totalResolutions++;
-    return 'https://media.w3.org/2010/05/sintel/trailer.mp4';
+    return null;
   }
 
   public async cancel(transferId: string): Promise<boolean> {

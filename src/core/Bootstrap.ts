@@ -24,8 +24,18 @@ import {
   AllDebridProvider,
   DebridLinkProvider
 } from './streams';
+import { StreamViewModel } from './streams/viewmodels/StreamViewModel';
+import { PlayerOverlayViewModel } from './playback/viewmodels/PlayerOverlayViewModel';
+import { StreamDiscoveryService } from './streams/services/StreamDiscoveryService';
+import { StreamResolutionService } from './streams/services/StreamResolutionService';
+import { StreamSortingService } from './streams/services/StreamSortingService';
 import { EventBus } from './EventBus';
 import { Logger, LogLevel } from './Logger';
+import { DetailService } from './services/DetailService';
+import { SearchService } from './services/SearchService';
+import { SearchViewModel } from './search/SearchViewModel';
+import { HomeCatalogService } from './services/HomeCatalogService';
+import { HomeViewModel } from './home/HomeViewModel';
 import { Config } from './Config';
 import { DeviceCapabilities } from './DeviceCapabilities';
 import { NetworkClient } from './NetworkClient';
@@ -149,6 +159,9 @@ export class Bootstrap {
 
       const playbackManager = new PlaybackManager(eventBus, logger, cacheManager, avplayManager);
       container.register('PlaybackManager', playbackManager);
+      
+      const playerOverlayViewModel = new PlayerOverlayViewModel(playbackManager);
+      container.register('PlayerOverlayViewModel', playerOverlayViewModel);
 
       // 7. Initialize Providers
       const providerContext: ProviderContext = {
@@ -228,7 +241,18 @@ const stremioProvider = new StremioProvider();
       const transferManager = new TransferManager(eventBus, logger, debridManager);
       container.register('TransferManager', transferManager);
 
+      const streamDiscoveryService = new StreamDiscoveryService(sourceManager);
+      const streamResolutionService = new StreamResolutionService(resolutionManager, debridManager, transferManager);
+      const streamSortingService = new StreamSortingService();
 
+      const streamViewModel = new StreamViewModel(
+         eventBus,
+         streamDiscoveryService,
+         streamResolutionService,
+         streamSortingService,
+         settingsManager
+      );
+      container.register('StreamViewModel', streamViewModel);
 
       // 8. Initialize Metadata Engine
       const metadataRepository = new MetadataRepository(cacheManager);
@@ -249,6 +273,12 @@ const stremioProvider = new StremioProvider();
       const metadataManager = new MetadataManager(metadataAggregator, metadataRepository, eventBus, logger);
       container.register('MetadataManager', metadataManager);
 
+      const homeCatalogService = new HomeCatalogService(metadataManager, logger);
+      container.register('HomeCatalogService', homeCatalogService);
+
+      const homeViewModel = new HomeViewModel(homeCatalogService, logger);
+      container.register('HomeViewModel', homeViewModel);
+
 
       // 10. Initialize Details Engine
       const artworkSelector = new ArtworkSelector();
@@ -257,8 +287,10 @@ const stremioProvider = new StremioProvider();
       const mediaDetailsRepository = new MediaDetailsRepository(metadataRepository);
       const mediaSectionBuilder = new MediaSectionBuilder();
       const mediaActionResolver = new MediaActionResolver();
+      const detailService = new DetailService(metadataManager, logger);
+      container.register('DetailService', detailService);
       const mediaDetailsManager = new MediaDetailsManager(
-        metadataManager,
+        detailService,
         mediaDetailsRepository,
         mediaSectionBuilder,
         mediaActionResolver,
@@ -281,6 +313,12 @@ const stremioProvider = new StremioProvider();
 
       const searchManager = new SearchManager(providerManager, searchRepository, eventBus, logger, config);
       container.register('SearchManager', searchManager);
+
+      const searchService = new SearchService(searchManager, logger);
+      container.register('SearchService', searchService);
+
+      const searchViewModel = new SearchViewModel(searchService, logger);
+      container.register('SearchViewModel', searchViewModel);
 
       logger.info('Bootstrap sequence completed successfully.');
     } catch (error) {

@@ -56,6 +56,16 @@ export class MetadataRepository {
     await this.cache.set('domain_collection', id, collection, CachePolicyType.METADATA);
   }
 
+  public async getCatalogCollection(type: string, mediaType: string, language: string = 'global', page: number = 1): Promise<any | null> {
+    const cacheKey = `${type}_${mediaType}_${language}_page${page}`;
+    return this.cache.get<any>('catalog_collection', cacheKey, CachePolicyType.METADATA);
+  }
+
+  public async saveCatalogCollection(type: string, mediaType: string, language: string = 'global', page: number = 1, data: any): Promise<void> {
+    const cacheKey = `${type}_${mediaType}_${language}_page${page}`;
+    await this.cache.set('catalog_collection', cacheKey, data, CachePolicyType.METADATA);
+  }
+
   public async invalidate(type: string, id: string): Promise<void> {
     await this.cache.invalidate(`domain_${type}`, id);
   }

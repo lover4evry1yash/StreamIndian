@@ -231,6 +231,7 @@ export interface MediaReference {
   readonly year?: number;
   readonly posterUrl?: string;
   readonly backdropUrl?: string;
+  readonly language?: string;
   readonly progress?: number; // 0-100
   readonly lastWatched?: number;
   readonly externalIds?: ExternalIds;
@@ -241,4 +242,11 @@ export interface UserList {
   readonly name: string;
   readonly description?: string;
   readonly itemCount: number;
+}
+
+export interface CatalogCollectionRequest {
+  readonly type: string;
+  readonly mediaType: 'movie' | 'series' | 'anime';
+  readonly language?: string;
+  readonly page?: number;
 }

@@ -18,6 +18,13 @@ import { MediaDetailsManager } from '../core/details/MediaDetailsManager';
 import { MediaDetailsViewModel } from '../core/details/MediaDetailsViewModel';
 import { ProviderManager } from '../core/providers';
 import { MetadataManager } from '../core/metadata/MetadataManager';
+import { DetailService } from '../core/services/DetailService';
+import { SearchService } from '../core/services/SearchService';
+import { SearchViewModel } from '../core/search/SearchViewModel';
+import { HomeCatalogService } from '../core/services/HomeCatalogService';
+import { HomeViewModel } from '../core/home/HomeViewModel';
+import { StreamViewModel } from '../core/streams/viewmodels/StreamViewModel';
+import { PlayerOverlayViewModel } from '../core/playback/viewmodels/PlayerOverlayViewModel';
 
 const ServiceContext = createContext<ServiceContainer>(container);
 
@@ -37,7 +44,6 @@ export const useEventBus = () => useContainer().resolve<EventBus>('EventBus');
 export const usePlaybackManager = () => useContainer().resolve<PlaybackManager>('PlaybackManager');
 export const useAVPlayManager = () => useContainer().resolve<AVPlayManager>('AVPlayManager');
 export const useSettingsManager = () => useContainer().resolve<SettingsManager>('SettingsManager');
-export const useSearchManager = () => useContainer().resolve<SearchManager>('SearchManager');
 export const useImageManager = () => useContainer().resolve<ImageManager>('ImageManager');
 export const useNavigationManager = () => useContainer().resolve<NavigationManager>('NavigationManager');
 export const useRenderMetrics = () => useContainer().resolve<RenderMetrics>('RenderMetrics');
@@ -49,3 +55,10 @@ export const useMediaDetailsManager = () => useContainer().resolve<MediaDetailsM
 export const useMediaDetailsViewModel = () => useContainer().resolve<MediaDetailsViewModel>('MediaDetailsViewModel');
 export const useProviderManager = () => useContainer().resolve<ProviderManager>('ProviderManager');
 export const useMetadataManager = () => useContainer().resolve<MetadataManager>('MetadataManager');
+export const useDetailService = () => useContainer().resolve<DetailService>('DetailService');
+export const useSearchService = () => useContainer().resolve<SearchService>('SearchService');
+export const useSearchViewModel = () => useContainer().resolve<SearchViewModel>('SearchViewModel');
+export const useHomeCatalogService = () => useContainer().resolve<HomeCatalogService>('HomeCatalogService');
+export const useHomeViewModel = () => useContainer().resolve<HomeViewModel>('HomeViewModel');
+export const useStreamViewModel = () => useContainer().resolve<StreamViewModel>('StreamViewModel');
+export const usePlayerOverlayViewModel = () => useContainer().resolve<PlayerOverlayViewModel>('PlayerOverlayViewModel');

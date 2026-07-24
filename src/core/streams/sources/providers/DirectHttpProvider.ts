@@ -36,16 +36,18 @@ export class DirectHttpProvider implements ISourceProvider {
   }
 
   public async search(query: MediaSearchQuery): Promise<CanonicalStreamSource[]> {
-    return [{
-      id: `http_mock_${query.mediaId}`,
-      title: 'Direct MP4 Stream',
-      type: query.type,
-      sourceType: 'https',
-      url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
-      quality: '720p HD',
-      codec: 'H264',
-      provider: this.name,
-      score: 70
-    }];
+    // Return a dummy direct HTTP stream for playback testing
+    return [
+      {
+        id: `direct_sintel_${query.mediaId}`,
+        title: 'Sintel Trailer (Test)',
+        type: 'movie',
+        sourceType: 'http',
+        url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+        quality: '1080p FHD',
+        size: 15000000,
+        provider: this.name
+      }
+    ];
   }
 }

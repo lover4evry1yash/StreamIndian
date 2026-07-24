@@ -1,4 +1,3 @@
-import { StreamSelectionView } from './components/StreamSelectionView';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -19,12 +18,11 @@ const SearchView = React.lazy(() => import('./components/SearchView').then(modul
 const WatchlistHistoryView = React.lazy(() => import('./components/WatchlistHistoryView').then(module => ({ default: module.WatchlistHistoryView })));
 const SettingsView = React.lazy(() => import('./components/SettingsView').then(module => ({ default: module.SettingsView })));
 import { MediaItem, StreamSource } from './types/tizen';
-import { providerManager } from './providers';
 import { tizenKeyController } from './core/tizenKeys';
-import { Play, Info, Star, Film, Sparkles } from 'lucide-react';
-import { useRenderMetrics } from './context/ServiceContext';
+import { TVHero, TVButton } from './design-system';
+import { Play, Info, Star } from 'lucide-react';
+import { useRenderMetrics, useHomeViewModel } from './context/ServiceContext';
 import { RenderBudget } from './core/rendering/RenderMetrics';
-
 
 
 
@@ -38,15 +36,12 @@ const appRenderBudget: RenderBudget = {
 export default function App() {
   const [activeTab, setActiveTab] = useState('nav-home');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
-  const [catalog, setCatalog] = useState<MediaItem[]>([]);
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   
+  const homeViewModel = useHomeViewModel();
+  
   // Playback state
-
-  const [streamSelectionMedia, setStreamSelectionMedia] = useState<{
-    media: MediaItem;
-    startPosition: number;
-  } | null>(null);
 
   const [activePlayback, setActivePlayback] = useState<{
     media: MediaItem;
@@ -71,13 +66,13 @@ export default function App() {
     loadCatalog();
     if (metrics) {
       metrics.registerBudget('AppHome', appRenderBudget);
-      metrics.validateBudget('AppHome', { cards: catalog.length });
+      metrics.validateBudget('AppHome', { cards: homeViewModel.getCatalog().length });
     }
-  }, [selectedLanguage, catalog.length, metrics]);
+  }, [selectedLanguage, metrics, homeViewModel]);
 
   const loadCatalog = async () => {
-    const items = await providerManager.getUnifiedCatalog(selectedLanguage);
-    setCatalog(items);
+    await homeViewModel.load(selectedLanguage);
+    setCatalogRevision(r => r + 1);
   };
 
   const handleStartPlayback = (media: MediaItem, stream: StreamSource, startTimeSeconds: number) => {
@@ -85,22 +80,8 @@ export default function App() {
     setActivePlayback({ media, stream, startTimeSeconds });
   };
 
-  const heroItem = catalog.find((m) => m.isRegionalHero || m.isTrending) || catalog[0];
-
-  const trendingItems = catalog.filter((m) => m.isTrending);
-  const trendingMovies = trendingItems.filter(m => m.mediaType === 'movie');
-  const trendingSeries = trendingItems.filter(m => m.mediaType === 'series');
-  const popularMovies = catalog.filter(m => m.mediaType === 'movie' && m.imdbRating && m.imdbRating > 8);
-  const popularSeries = catalog.filter(m => m.mediaType === 'series' && m.imdbRating && m.imdbRating > 8);
-  const anime = catalog.filter(m => m.mediaType === 'anime' || m.genres.includes('Animation'));
-  const indianMovies = catalog.filter(m => m.mediaType === 'movie' && ['Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali', 'Marathi', 'Punjabi'].includes(m.language));
-  const indianSeries = catalog.filter(m => m.mediaType === 'series' && ['Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali', 'Marathi', 'Punjabi'].includes(m.language));
-  const recentlyAdded = catalog.slice().sort((a,b) => b.year - a.year);
-  const recommended = catalog.filter(m => !m.isTrending);
-  const topRated = catalog.slice().sort((a,b) => (b.imdbRating || 0) - (a.imdbRating || 0));
-  const discover = catalog.slice(0, 10); // Random sample in real app
-  const southItems = catalog.filter((m) => ['Tamil', 'Telugu', 'Malayalam', 'Kannada'].includes(m.language));
-  const northWestItems = catalog.filter((m) => ['Hindi', 'Marathi', 'Bengali', 'Punjabi'].includes(m.language));
+  const heroItem = homeViewModel.getHero();
+  const shelves = homeViewModel.getShelves();
 
   return (
     <SpatialFocusProvider
@@ -132,78 +113,43 @@ export default function App() {
           <main className="space-y-6">
             {/* Spotlight Hero Banner */}
             {heroItem && (
-              <section className="relative w-full h-[65vh] md:h-[70vh] bg-[#050506] overflow-hidden flex items-end p-8 md:p-12 border-b border-white/10">
-                {/* Hero Backdrop Image */}
-                <LazyImage
-                  src={heroItem.backdropUrl || heroItem.posterUrl}
-                  alt={heroItem.title}
-                  className="absolute inset-0 w-full h-full object-cover object-top opacity-50 scale-105 filter brightness-90"
-                  priority="high"
-                />
-
-                {/* Dark Vignette Gradients */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#050506] via-[#050506]/60 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#050506] via-[#050506]/40 to-transparent" />
-
-                {/* Hero Information */}
-                <div className="relative z-10 max-w-3xl space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-md bg-indigo-600 text-white font-bold text-xs uppercase tracking-widest shadow-md">
-                      {heroItem.language} Blockbuster
-                    </span>
-                    <span className="px-2.5 py-1 rounded-md bg-black/70 backdrop-blur text-indigo-400 font-bold text-xs flex items-center gap-1 border border-indigo-500/30">
-                      <Star className="w-3.5 h-3.5 fill-indigo-400 text-indigo-400" />
-                      {heroItem.imdbRating} IMDb
-                    </span>
-                    <span className="px-2.5 py-1 rounded-md bg-white/10 text-zinc-300 font-semibold text-xs border border-white/10">
-                      {heroItem.rating}
-                    </span>
-                  </div>
-
-                  <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none drop-shadow-lg">
-                    {heroItem.title}
-                  </h1>
-
-                  <p className="text-xs md:text-sm text-zinc-300 leading-relaxed line-clamp-3 max-w-2xl">
-                    {heroItem.description}
-                  </p>
-
-                  {/* Remote Focusable Action Buttons */}
-                  <div className="flex items-center gap-4 pt-2">
+              <TVHero
+                title={heroItem.title}
+                subtitle={`${heroItem.language} • ${heroItem.genres.join(', ')} • ${heroItem.rating}`}
+                description={heroItem.description}
+                imageUrl={heroItem.backdropUrl || heroItem.posterUrl}
+                actions={
+                  <>
                     {heroItem.streams.length > 0 && (
-                      <FocusItem
+                      <TVButton
                         id="hero-play-btn"
-                        onClick={() => setStreamSelectionMedia({ media: heroItem, startPosition: 0 })}
-                        className="px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm flex items-center gap-2 shadow-[0_0_20px_rgba(79,70,229,0.5)] border border-indigo-400/50"
+                        onClick={() => setSelectedMedia(heroItem)}
+                        icon={<Play className="w-6 h-6 fill-black" />}
+                        variant="primary"
+                        size="lg"
                       >
-                        <Play className="w-5 h-5 fill-white" />
-                        <span>Watch Now</span>
-                      </FocusItem>
+                        Watch Now
+                      </TVButton>
                     )}
-
-                    <FocusItem
+                    <TVButton
                       id="hero-details-btn"
                       onClick={() => setSelectedMedia(heroItem)}
-                      className="px-5 py-3.5 rounded-2xl bg-white/10 text-zinc-200 font-bold text-sm flex items-center gap-2 border border-white/10 hover:text-white hover:bg-white/20"
+                      icon={<Info className="w-6 h-6" />}
+                      variant="secondary"
+                      size="lg"
                     >
-                      <Info className="w-5 h-5 text-indigo-400" />
-                      <span>More Info</span>
-                    </FocusItem>
-                  </div>
-                </div>
-              </section>
+                      More Info
+                    </TVButton>
+                  </>
+                }
+              />
             )}
 
-            {/* Categorized TV Rows */}
-            <div className="space-y-6 pb-20">
-              {trendingMovies.length > 0 && <MediaRow rowId="row-trending-movies" title="Trending Movies" subtitle="Current hits" items={trendingMovies} onSelectMedia={setSelectedMedia} />}
-              {trendingSeries.length > 0 && <MediaRow rowId="row-trending-series" title="Trending Series" subtitle="Binge-worthy shows" items={trendingSeries} onSelectMedia={setSelectedMedia} />}
-              {popularMovies.length > 0 && <MediaRow rowId="row-popular-movies" title="Popular Movies" subtitle="Fan favorites" items={popularMovies} onSelectMedia={setSelectedMedia} />}
-              {popularSeries.length > 0 && <MediaRow rowId="row-popular-series" title="Popular Series" subtitle="Highly rated TV" items={popularSeries} onSelectMedia={setSelectedMedia} />}
-              {indianMovies.length > 0 && <MediaRow rowId="row-indian-movies" title="Indian Movies" subtitle="Across all languages" items={indianMovies} onSelectMedia={setSelectedMedia} />}
-              {indianSeries.length > 0 && <MediaRow rowId="row-indian-series" title="Indian Series" subtitle="Regional and national hits" items={indianSeries} onSelectMedia={setSelectedMedia} />}
-              {recentlyAdded.length > 0 && <MediaRow rowId="row-recent" title="Recently Added" subtitle="Fresh content" items={recentlyAdded} onSelectMedia={setSelectedMedia} />}
-              {topRated.length > 0 && <MediaRow rowId="row-top-rated" title="Top Rated" subtitle="Critically acclaimed" items={topRated} onSelectMedia={setSelectedMedia} />}
+            {/* Categorized TV Shelves */}
+            <div className="pb-20">
+              {shelves.map(shelf => (
+                <MediaRow key={shelf.id} rowId={shelf.id} title={shelf.title} subtitle={shelf.subtitle || ''} items={shelf.items} onSelectMedia={setSelectedMedia} />
+              ))}
             </div>
           </main>
         )}
@@ -232,26 +178,14 @@ export default function App() {
             mediaId={selectedMedia.id}
             mediaType={selectedMedia.mediaType}
             onClose={() => setSelectedMedia(null)}
-            onPlay={(media, startPosition) => {
-              setStreamSelectionMedia({ media, startPosition: startPosition || 0 });
+            onPlay={(media, stream, startPosition) => {
+              handleStartPlayback(media, stream, startPosition || 0);
             }}
+            onSelectRelated={setSelectedMedia}
           />
         )}
         </Suspense>
         
-
-        
-        {streamSelectionMedia && (
-          <StreamSelectionView
-            media={streamSelectionMedia.media}
-            onClose={() => setStreamSelectionMedia(null)}
-            onStreamSelected={(stream) => {
-              handleStartPlayback(streamSelectionMedia.media, stream, streamSelectionMedia.startPosition);
-              setStreamSelectionMedia(null);
-            }}
-          />
-        )}
-
         {/* Fullscreen TV Player */}
         
         <Suspense fallback={<div className="fixed inset-0 z-50 bg-black flex items-center justify-center"><div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>}>

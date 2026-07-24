@@ -4,7 +4,7 @@ import { EventBus } from '../EventBus';
 import { Logger } from '../Logger';
 import { MetadataRepository } from './MetadataRepository';
 import { ValidationLayer } from './ValidationLayer';
-import { Movie, Series, Season, Episode, Collection, Person } from '../models/DomainModels';
+import { Movie, Series, Season, Episode, Collection, Person, CatalogCollectionRequest } from '../models/DomainModels';
 import { MetadataEventType } from './events';
 
 export class MetadataManager {
@@ -147,6 +147,60 @@ export class MetadataManager {
       if (cached) return cached;
     }
     return null;
+  }
+
+  
+  public async getCatalogCollection(request: CatalogCollectionRequest): Promise<import('../models/DomainModels').MediaReference[]> {
+    const options = { language: request.language, page: request.page };
+    const langKey = request.language || 'global';
+    const pageNum = request.page || 1;
+
+    const cached = await this.repository.getCatalogCollection(request.type, request.mediaType, langKey, pageNum);
+    if (cached) {
+      return cached;
+    }
+
+    let result: import('../models/DomainModels').MediaReference[] = [];
+    switch (request.type) {
+      case 'trending':
+        result = await this.getTrending(request.mediaType as 'movie' | 'series', options);
+        break;
+      case 'popular':
+        result = await this.getPopular(request.mediaType as 'movie' | 'series', options);
+        break;
+      case 'topRated':
+        result = await this.getTopRated(request.mediaType as 'movie' | 'series', options);
+        break;
+      default:
+        this.logger.warn(`Unsupported catalog collection type: ${request.type}`);
+        return [];
+    }
+
+    if (result && result.length > 0) {
+      await this.repository.saveCatalogCollection(request.type, request.mediaType, langKey, pageNum, result);
+    }
+    return result;
+  }
+
+  /**
+   * @deprecated Use getCatalogCollection({ type: 'trending', mediaType: type }) instead.
+   */
+  public async getTrending(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<import('../models/DomainModels').MediaReference[]> {
+    return this.aggregator.getTrending(type, options);
+  }
+
+  /**
+   * @deprecated Use getCatalogCollection({ type: 'popular', mediaType: type }) instead.
+   */
+  public async getPopular(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<import('../models/DomainModels').MediaReference[]> {
+    return this.aggregator.getPopular(type, options);
+  }
+
+  /**
+   * @deprecated Use getCatalogCollection({ type: 'topRated', mediaType: type }) instead.
+   */
+  public async getTopRated(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<import('../models/DomainModels').MediaReference[]> {
+    return this.aggregator.getTopRated(type, options);
   }
 
   public async prefetch(type: 'movie' | 'series', id: string): Promise<void> {

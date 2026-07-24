@@ -8,7 +8,7 @@ import { StreamIndianStorage } from '../core/storage';
 import { providerManager } from '../providers';
 import { FocusItem } from './FocusItem';
 import { LazyImage } from './LazyImage';
-import { MediaCard } from './MediaCard';
+import { TVPoster } from '../design-system';
 import { Bookmark, History, RotateCcw, Trash2 } from 'lucide-react';
 
 interface WatchlistHistoryViewProps {
@@ -105,12 +105,16 @@ export const WatchlistHistoryView: React.FC<WatchlistHistoryViewProps> = ({ onSe
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {watchlistMedia.map((media, idx) => (
-              <MediaCard
-                key={media.id}
-                media={media}
-                onSelect={onSelectMedia}
-                index={idx}
-              />
+              <div key={media.id} className="w-full">
+                <TVPoster
+                  id={`watchlist-media-${media.id}`}
+                  groupId="watchlist"
+                  imageUrl={media.posterUrl}
+                  title={media.title}
+                  subtitle={media.genres.join(' • ')}
+                  onClick={() => onSelectMedia(media)}
+                />
+              </div>
             ))}
           </div>
         )}

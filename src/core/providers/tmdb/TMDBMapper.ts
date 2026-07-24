@@ -145,6 +145,21 @@ export class TMDBMapper {
     }));
   }
 
+  public mapMediaReference(data: any, type: 'movie' | 'series'): import('../../models/DomainModels').MediaReference {
+    return {
+      id: `tmdb_${data.id}`,
+      type: type,
+      title: type === 'movie' ? data.title || data.original_title : data.name || data.original_name,
+      year: type === 'movie' ? (data.release_date ? parseInt(data.release_date.substring(0, 4)) : undefined) : (data.first_air_date ? parseInt(data.first_air_date.substring(0, 4)) : undefined),
+      posterUrl: this.getImageUrl(data.poster_path) || undefined,
+      backdropUrl: this.getImageUrl(data.backdrop_path) || undefined,
+      language: data.original_language,
+      externalIds: {
+        tmdbId: String(data.id)
+      }
+    };
+  }
+
   private mapCredits(credits?: any): Credits | undefined {
     if (!credits) return undefined;
     

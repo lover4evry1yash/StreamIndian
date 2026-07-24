@@ -1,3 +1,4 @@
 export * from './types';
-export * from './ResumeManager';
+export * from './services/PlaybackHistoryService';
+export * from './PlaybackSession';
 export * from './PlaybackManager';

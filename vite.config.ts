@@ -28,7 +28,6 @@ export default defineConfig(() => {
               './src/core/rendering/ImageManager.ts',
               './src/core/rendering/PrefetchManager.ts',
               './src/core/rendering/RenderMetrics.ts',
-              './src/components/VirtualCarousel.tsx',
               './src/components/LazyImage.tsx',
             ],
             'metadata': [

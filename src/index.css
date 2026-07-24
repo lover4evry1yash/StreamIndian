@@ -1,1 +1,84 @@
 @import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-tv-bg: #000000;
+  --color-tv-surface: #121212;
+  --color-tv-surface-light: #202020;
+  --color-tv-surface-lighter: #2a2a2a;
+  
+  --color-tv-primary: #4f46e5; /* indigo-600 */
+  --color-tv-primary-hover: #4338ca; /* indigo-700 */
+  --color-tv-primary-glow: rgba(79, 70, 229, 0.5);
+  
+  --color-tv-text-primary: #ffffff;
+  --color-tv-text-secondary: #a1a1aa; /* zinc-400 */
+  --color-tv-text-disabled: #52525b; /* zinc-600 */
+  
+  --color-tv-error: #e11d48; /* rose-600 */
+  --color-tv-success: #16a34a; /* green-600 */
+  
+  /* Typography */
+  --text-tv-hero: 3.5rem;
+  --text-tv-title: 2rem;
+  --text-tv-heading: 1.5rem;
+  --text-tv-body: 1.125rem;
+  --text-tv-sm: 1rem;
+  --text-tv-xs: 0.875rem;
+
+  /* Spacing */
+  --spacing-tv-safe-h: 3.5rem;
+  --spacing-tv-safe-v: 2rem;
+  --spacing-tv-row-gap: 2.5rem;
+  --spacing-tv-card-gap: 1.25rem;
+  
+  /* Border Radius */
+  --radius-tv-card: 0.75rem;
+  --radius-tv-button: 9999px; /* pill */
+  --radius-tv-badge: 0.5rem;
+  
+  /* Shadows / Glows */
+  --shadow-tv-focus: 0 0 0 3px #ffffff, 0 0 24px var(--color-tv-primary-glow);
+  --shadow-tv-card: 0 10px 30px rgba(0,0,0,0.5);
+  
+  /* Animation */
+  --animate-tv-focus: tv-focus 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
+  --animate-tv-fade: tv-fade 0.3s ease-in-out forwards;
+}
+
+@keyframes tv-focus {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+@keyframes tv-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+body {
+  background-color: var(--color-tv-bg);
+  color: var(--color-tv-text-primary);
+  /* Prevent scrolling for TV app */
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+/* Custom TV Scrollbar (used for scrollable areas) */
+.tv-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.tv-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tv-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-tv-surface-light);
+  border-radius: var(--radius-tv-button);
+}
+.tv-scrollbar.is-focused::-webkit-scrollbar-thumb,
+.tv-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: var(--color-tv-text-secondary);
+}

@@ -1,18 +1,26 @@
 import { NetworkClient } from '../../NetworkClient';
 import { SettingsManager } from '../../storage/SettingsManager';
+import { Config } from '../../Config';
 
 export class TMDBClient {
   private network: NetworkClient;
   private settings: SettingsManager;
+  private config: Config;
   private baseUrl: string = 'https://api.themoviedb.org/3';
 
-  constructor(network: NetworkClient, settings: SettingsManager) {
+  constructor(network: NetworkClient, settings: SettingsManager, config: Config) {
     this.network = network;
     this.settings = settings;
+    this.config = config;
   }
 
   public async get<T>(endpoint: string, params: Record<string, string | number> = {}): Promise<T> {
-    const tmdbConfig = { apiKey: this.settings.getSettings().providers?.tmdb?.apiKey, language: 'en-US', timeoutMs: 10000 };
+    const tmdbConfigSettings = this.settings.getSettings().providers?.tmdb;
+    const tmdbConfig = { 
+        apiKey: tmdbConfigSettings?.apiKey || this.config.get('tmdb').apiKey, 
+        language: 'en-US', 
+        timeoutMs: 10000 
+    };
     
     if (!tmdbConfig || !tmdbConfig.apiKey || tmdbConfig.apiKey === 'your_default_api_key') {
       throw new Error('TMDB API Key is not configured');

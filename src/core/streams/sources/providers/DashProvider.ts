@@ -36,16 +36,6 @@ export class DashProvider implements ISourceProvider {
   }
 
   public async search(query: MediaSearchQuery): Promise<CanonicalStreamSource[]> {
-    return [{
-      id: `dash_mock_${query.mediaId}`,
-      title: 'DASH 4K Stream',
-      type: query.type,
-      sourceType: 'dash',
-      url: 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd',
-      quality: '4K',
-      codec: 'HEVC',
-      provider: this.name,
-      score: 85
-    }];
+    return [];
   }
 }

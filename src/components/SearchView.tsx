@@ -2,15 +2,13 @@
  * StreamIndian - TV Search & Discovery View
  * Remote-friendly keyboard and instant title/cast/genre filtering.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FocusItem } from './FocusItem';
-import { MediaCard } from './MediaCard';
+import { TVPoster } from '../design-system';
 import { MediaItem } from '../types/tizen';
 import { Search, Sparkles, Filter, Clock, Trash2, AlertTriangle } from 'lucide-react';
-import { useSearchManager, useEventBus } from '../context/ServiceContext';
-import { SearchManager, SearchQuery, SearchResult, SearchResultItem, SearchError, SearchHistoryItem, SearchEventType } from '../core/search';
-import { EventBus } from '../core/EventBus';
-import { Movie, Series } from '../core/models/DomainModels';
+import { useSearchViewModel } from '../context/ServiceContext';
+import { SearchHistoryItem } from '../core/search';
 
 interface SearchViewProps {
   onSelectMedia: (media: MediaItem) => void;
@@ -18,98 +16,28 @@ interface SearchViewProps {
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({ onSelectMedia, selectedLanguage }) => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<MediaItem[]>([]);
-  const [history, setHistory] = useState<SearchHistoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<SearchError | null>(null);
+  const searchViewModel = useSearchViewModel();
+  const [, setRevision] = useState(0);
 
-  const searchManager = useSearchManager();
-  const eventBus = useEventBus();
-
-  useEffect(() => {
-    // Load search history initially
-    searchManager.getHistory().then(setHistory);
-
-    const handleSearchStarted = (e: { query: SearchQuery }) => {
-      setLoading(true);
-      setError(null);
-    };
-
-    const handleSearchCompleted = (e: { query: SearchQuery; results: SearchResult }) => {
-      setLoading(false);
-      setError(null);
-      
-      // Map Domain Models (SearchResultItem) back to legacy MediaItem for App.tsx compatibility
-      const mappedResults: MediaItem[] = e.results.items.map((item: any) => {
-        const isMovie = item.durationMinutes !== undefined;
-        return {
-          id: item.id,
-          mediaType: item.mediaType || (isMovie ? 'movie' : 'series'),
-          title: item.title,
-          originalTitle: item.originalTitle,
-          language: selectedLanguage === 'All' ? 'Hindi' : selectedLanguage as any, // fallback
-          year: item.releaseDate ? parseInt(item.releaseDate.substring(0, 4)) : (item.firstAirDate ? parseInt(item.firstAirDate.substring(0, 4)) : 2024),
-          durationMinutes: item.durationMinutes || 120,
-          rating: item.ratings?.[0]?.score ? `${item.ratings[0].score}/10` : 'U/A 13+',
-          imdbRating: item.ratings?.[0]?.score,
-          genres: item.genres?.map((g: any) => g.name) || [],
-          posterUrl: item.artwork?.posters?.[0]?.url || '',
-          backdropUrl: item.artwork?.backdrops?.[0]?.url || '',
-          description: item.overview || '',
-          cast: item.credits?.cast?.slice(0, 3).map((c: any) => c.name) || [],
-          director: item.credits?.crew?.find((c: any) => c.role === 'Director')?.name || 'Unknown',
-          provider: 'TMDB',
-          streams: []
-        };
-      });
-
-      setResults(mappedResults);
-      searchManager.getHistory().then(setHistory);
-    };
-
-    const handleSearchFailed = (e: { query: SearchQuery; error: SearchError }) => {
-      setLoading(false);
-      setError(e.error);
-      setResults([]);
-    };
-
-    const handleSearchCancelled = () => {
-      setLoading(false);
-      setError(null);
-      if (!query) setResults([]);
-    };
-
-    eventBus.on(SearchEventType.SEARCH_STARTED, handleSearchStarted);
-    eventBus.on(SearchEventType.SEARCH_COMPLETED, handleSearchCompleted);
-    eventBus.on(SearchEventType.SEARCH_FAILED, handleSearchFailed);
-    eventBus.on(SearchEventType.SEARCH_CANCELLED, handleSearchCancelled);
-
-    return () => {
-      eventBus.off(SearchEventType.SEARCH_STARTED, handleSearchStarted);
-      eventBus.off(SearchEventType.SEARCH_COMPLETED, handleSearchCompleted);
-      eventBus.off(SearchEventType.SEARCH_FAILED, handleSearchFailed);
-      eventBus.off(SearchEventType.SEARCH_CANCELLED, handleSearchCancelled);
-    };
-  }, [searchManager, eventBus, query, selectedLanguage]);
+  const query = searchViewModel.getQuery();
+  const results = searchViewModel.getResults();
+  const history = searchViewModel.getHistory();
+  const loading = searchViewModel.isLoading();
+  const error = searchViewModel.getError();
 
   useEffect(() => {
-    if (query.trim().length > 0) {
-      searchManager.searchDebounced({
-        query: query,
-        language: selectedLanguage === 'All' ? undefined : selectedLanguage,
-        page: 1
-      });
-    } else {
-      setResults([]);
-      setError(null);
-      setLoading(false);
-    }
-  }, [query, selectedLanguage, searchManager]);
+    searchViewModel.loadHistory().then(() => setRevision(r => r + 1));
+  }, [searchViewModel]);
+
+  const setQuery = (newQuery: string) => {
+    searchViewModel.setQuery(newQuery, selectedLanguage, () => {
+      setRevision(r => r + 1);
+    });
+  };
 
   const handleClearHistory = async () => {
-    await searchManager.clearHistory();
-    setHistory([]);
+    await searchViewModel.clearHistory();
+    setRevision(r => r + 1);
   };
 
   const quickQueryTags = ['Sci-Fi', 'Thriller', 'Action', 'Comedy', 'Horror', 'Drama', 'Mythology'];
@@ -211,7 +139,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectMedia, selectedL
             <div className="py-20 text-center text-rose-400 flex flex-col items-center justify-center gap-2">
               <AlertTriangle className="w-8 h-8 mb-2" />
               <p className="text-base font-bold">Search Failed</p>
-              <p className="text-xs text-zinc-400">{error.message}</p>
+              <p className="text-xs text-zinc-400">{error}</p>
             </div>
           ) : results.length === 0 && query ? (
             <div className="py-20 text-center text-zinc-500 space-y-2">
@@ -221,12 +149,16 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectMedia, selectedL
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
               {results.map((media, idx) => (
-                <MediaCard
-                  key={media.id}
-                  media={media}
-                  onSelect={onSelectMedia}
-                  index={idx}
-                />
+                <div key={media.id} className="w-full">
+                  <TVPoster
+                    id={`search-media-${media.id}`}
+                    groupId="search-results"
+                    imageUrl={media.posterUrl}
+                    title={media.title}
+                    subtitle={media.genres.join(' • ')}
+                    onClick={() => onSelectMedia(media)}
+                  />
+                </div>
               ))}
             </div>
           )}

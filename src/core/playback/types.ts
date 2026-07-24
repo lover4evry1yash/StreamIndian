@@ -28,20 +28,6 @@ export interface PlaybackError {
   originalError?: any;
 }
 
-export interface PlaybackSession {
-  mediaId: string;
-  title: string;
-  streamUrl: string;
-  currentTime: number;
-  duration: number;
-  selectedAudioTrack: string | null;
-  selectedSubtitleTrack: string | null;
-  playbackSpeed: number;
-  resumePosition: number;
-  isLive: boolean;
-  startTimestamp: number;
-}
-
 export interface AudioTrack {
   index: number;
   language: string;

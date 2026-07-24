@@ -4,13 +4,16 @@ import App from './App.tsx';
 import './index.css';
 import { Bootstrap } from './core/Bootstrap';
 import { ServiceProvider } from './context/ServiceContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 Bootstrap.init().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <ServiceProvider>
-        <App />
-      </ServiceProvider>
+      <ErrorBoundary>
+        <ServiceProvider>
+          <App />
+        </ServiceProvider>
+      </ErrorBoundary>
     </StrictMode>,
   );
 }).catch(error => {

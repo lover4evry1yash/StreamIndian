@@ -193,7 +193,8 @@ export class NetworkClient {
         const durationMs = Date.now() - start;
 
         if (!response.ok) {
-          this.logger.warn(`Fetch failed for ${url} with status ${response.status}`);
+          const cleanUrl = url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
+          this.logger.debug(`Fetch failed for ${cleanUrl} with status ${response.status}`);
           // Retry on 429, 500, 502, 503, 504
           const isRetryable = response.status === 429 || response.status >= 500;
           
@@ -219,7 +220,8 @@ export class NetworkClient {
             this.updateDiagnostics(providerId, { averageLatency: durationMs });
         }
         
-        this.logger.warn(`Attempt ${attempt + 1} failed for ${url}: ${error.message}`);
+        const cleanUrl = url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
+        this.logger.debug(`Attempt ${attempt + 1} failed for ${cleanUrl}: ${error.message}`);
         
         if (attempt === retries || error.isPermanent) {
           if (providerId !== 'unknown') this.updateDiagnostics(providerId, { failedRequests: 1 });

@@ -21,6 +21,8 @@ export interface ProviderCapabilities {
   supportsArtwork?: boolean;
   supportsSubtitles?: boolean;
   supportsRecommendations?: boolean;
+  supportsPersonalization?: boolean;
+  supportsCollections?: boolean;
   supportsCaching?: boolean;
   supportsAuthentication?: boolean;
   [key: string]: boolean | undefined;
@@ -135,7 +137,7 @@ export interface ProviderMergePolicy {
 }
 
 export interface IPersonalizationProvider extends IProvider {
-  getTrending?(type: 'movie' | 'series'): Promise<MediaReference[]>;
+  getTrending?(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]>;
   getRecommendations?(type: 'movie' | 'series', id?: string): Promise<MediaReference[]>;
   getWatchHistory?(): Promise<MediaReference[]>;
   getContinueWatching?(): Promise<MediaReference[]>;
@@ -145,8 +147,8 @@ export interface IPersonalizationProvider extends IProvider {
 
 export interface ICollectionProvider extends IProvider {
   getCollection(id: string): Promise<MediaReference[]>;
-  getTopRated?(type: 'movie' | 'series'): Promise<MediaReference[]>;
-  getPopular?(type: 'movie' | 'series'): Promise<MediaReference[]>;
+  getTopRated?(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]>;
+  getPopular?(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]>;
 }
 
 export interface IRatingsProvider extends IProvider {

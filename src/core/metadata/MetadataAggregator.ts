@@ -61,12 +61,12 @@ export class MetadataAggregator {
 
   // --- Personalization & Collections ---
 
-  public async getTrending(type: 'movie' | 'series'): Promise<MediaReference[]> {
+  public async getTrending(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]> {
     const result = await this.providerManager.executeFirstSuccessful<any>(
-      'supportsRecommendations',
+      'supportsPersonalization',
       async (p: any) => {
         const provider = p as IPersonalizationProvider;
-        if (provider.getTrending) return provider.getTrending(type);
+        if (provider.getTrending) return provider.getTrending(type, options);
         return null;
       }
     );
@@ -87,7 +87,7 @@ export class MetadataAggregator {
 
   public async getWatchHistory(): Promise<MediaReference[]> {
     const result = await this.providerManager.executeFirstSuccessful<any>(
-      'supportsRecommendations',
+      'supportsPersonalization',
       async (p: any) => {
         const provider = p as IPersonalizationProvider;
         if (provider.getWatchHistory) return provider.getWatchHistory();
@@ -99,7 +99,7 @@ export class MetadataAggregator {
 
   public async getContinueWatching(): Promise<MediaReference[]> {
     const result = await this.providerManager.executeFirstSuccessful<any>(
-      'supportsRecommendations',
+      'supportsPersonalization',
       async (p: any) => {
         const provider = p as IPersonalizationProvider;
         if (provider.getContinueWatching) return provider.getContinueWatching();
@@ -111,7 +111,7 @@ export class MetadataAggregator {
 
   public async getCollection(id: string): Promise<MediaReference[]> {
     const result = await this.providerManager.executeFirstSuccessful<any>(
-      'supportsRecommendations',
+      'supportsCollections',
       async (p: any) => {
         const provider = p as ICollectionProvider;
         if (provider.getCollection) return provider.getCollection(id);
@@ -134,12 +134,24 @@ export class MetadataAggregator {
     return result.data || [];
   }
 
-  public async getTopRated(type: 'movie' | 'series'): Promise<MediaReference[]> {
+  public async getTopRated(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]> {
     const result = await this.providerManager.executeFirstSuccessful<any>(
-      'supportsRecommendations', // Assuming Collections capability handles top rated lists
+      'supportsCollections',
       async (p: any) => {
         const provider = p as ICollectionProvider;
-        if (provider.getTopRated) return provider.getTopRated(type);
+        if (provider.getTopRated) return provider.getTopRated(type, options);
+        return null;
+      }
+    );
+    return result.data || [];
+  }
+
+  public async getPopular(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]> {
+    const result = await this.providerManager.executeFirstSuccessful<any>(
+      'supportsCollections',
+      async (p: any) => {
+        const provider = p as ICollectionProvider;
+        if (provider.getPopular) return provider.getPopular(type, options);
         return null;
       }
     );

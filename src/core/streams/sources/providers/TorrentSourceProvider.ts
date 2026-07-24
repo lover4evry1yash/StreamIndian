@@ -36,35 +36,6 @@ export class TorrentSourceProvider implements ISourceProvider {
   }
 
   public async search(query: MediaSearchQuery): Promise<CanonicalStreamSource[]> {
-    return [{
-      id: `torrent_mock_${query.mediaId}`,
-      title: 'High Quality REMUX',
-      type: query.type,
-      sourceType: 'magnet',
-      magnet: 'magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c',
-      infoHash: 'dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c',
-      quality: '4K HDR',
-      codec: 'HEVC',
-      audio: '7.1',
-      hdr: true,
-      atmos: true,
-      size: 45 * 1024 * 1024 * 1024,
-      seeders: 145,
-      provider: this.name,
-      score: 150
-    },
-    {
-      id: `torrent_mock2_${query.mediaId}`,
-      title: '1080p WEB-DL',
-      type: query.type,
-      sourceType: 'torrent',
-      infoHash: 'a55fb0bbf81323d87062db1f6d1cdd8255ecdc7c',
-      quality: '1080p FHD',
-      codec: 'H264',
-      size: 5 * 1024 * 1024 * 1024,
-      seeders: 320,
-      provider: this.name,
-      score: 110
-    }];
+    return [];
   }
 }

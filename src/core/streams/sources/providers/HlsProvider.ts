@@ -36,17 +36,6 @@ export class HlsProvider implements ISourceProvider {
   }
 
   public async search(query: MediaSearchQuery): Promise<CanonicalStreamSource[]> {
-    // Mock HLS source for discovery
-    return [{
-      id: `hls_mock_${query.mediaId}`,
-      title: 'HLS 1080p Stream',
-      type: query.type,
-      sourceType: 'hls',
-      url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-      quality: '1080p FHD',
-      codec: 'H264',
-      provider: this.name,
-      score: 80
-    }];
+    return [];
   }
 }

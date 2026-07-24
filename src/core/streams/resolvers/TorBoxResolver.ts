@@ -48,21 +48,6 @@ export class TorBoxResolver implements IStreamResolver {
 
 
 public async resolveTorrent(torrent: TorrentMetadata): Promise<StreamResolution[]> {
-    if (torrent.infoHash === 'dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c') {
-      return [{
-         id: `tb_${torrent.infoHash}`,
-         title: torrent.name,
-         url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
-         quality: '4K HDR',
-         format: 'MP4',
-         provider: 'TorrentTrackers',
-         resolver: this.id,
-         health: 100,
-         size: torrent.size,
-         seeders: torrent.seeders,
-      }];
-    }
-    
     // Simulate uncached torrent
     return [{
        id: `tb_uncached_${torrent.infoHash}`,

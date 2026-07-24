@@ -1,10 +1,10 @@
-import { IMetadataProvider, IArtworkProvider, ISearchProvider, ProviderContext, ProviderCapabilities, ProviderHealth, ProviderStatus } from '../types';
+import { IMetadataProvider, IArtworkProvider, ISearchProvider, IPersonalizationProvider, ICollectionProvider, ProviderContext, ProviderCapabilities, ProviderHealth, ProviderStatus } from '../types';
 import { TMDBClient } from './TMDBClient';
 import { TMDBMapper } from './TMDBMapper';
-import { Movie, Series, Episode } from '../../models/DomainModels';
+import { Movie, Series, Episode, MediaReference } from '../../models/DomainModels';
 import { SearchQuery, SearchResult, SearchResultItem } from '../../search/types';
 
-export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearchProvider {
+export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearchProvider, IPersonalizationProvider, ICollectionProvider {
   public readonly id = 'tmdb';
   public readonly name = 'The Movie Database';
   public readonly version = '3.0.0';
@@ -14,8 +14,10 @@ export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearc
   public readonly capabilities: ProviderCapabilities = {
     "supportsMetadata": true,
     "supportsArtwork": true,
-    "supportsSearch": true
-};
+    "supportsSearch": true,
+    "supportsPersonalization": true,
+    "supportsCollections": true
+  };
   
 
   private client!: TMDBClient;
@@ -24,7 +26,7 @@ export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearc
 
   public async initialize(context: ProviderContext): Promise<void> {
     this.context = context;
-    this.client = new TMDBClient(context.network, context.settingsManager);
+    this.client = new TMDBClient(context.network, context.settingsManager, context.config);
     this.mapper = new TMDBMapper(context.config);
   }
 
@@ -125,6 +127,87 @@ export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearc
         totalResults: data.total_results
       };
     } catch (err: any) {
+      throw this.mapError(err);
+    }
+  }
+
+  // --- IPersonalizationProvider ---
+  public async getTrending(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]> {
+    try {
+      const page = options?.page || 1;
+      let endpoint = type === 'movie' ? '/trending/movie/day' : '/trending/tv/day';
+      let params: Record<string, any> = { page };
+
+      if (options?.language) {
+        endpoint = type === 'movie' ? '/discover/movie' : '/discover/tv';
+        params = {
+          page,
+          with_original_language: options.language,
+          sort_by: 'popularity.desc'
+        };
+      }
+
+      const data = await this.client.get<any>(endpoint, params);
+      return data.results.map((item: any) => this.mapper.mapMediaReference(item, type)).filter(Boolean) as MediaReference[];
+    } catch (err: any) {
+      throw this.mapError(err);
+    }
+  }
+
+  // --- ICollectionProvider ---
+  public async getPopular(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]> {
+    try {
+      const page = options?.page || 1;
+      let endpoint = type === 'movie' ? '/movie/popular' : '/tv/popular';
+      let params: Record<string, any> = { page };
+
+      if (options?.language) {
+        endpoint = type === 'movie' ? '/discover/movie' : '/discover/tv';
+        params = {
+          page,
+          with_original_language: options.language,
+          sort_by: 'popularity.desc'
+        };
+      }
+
+      const data = await this.client.get<any>(endpoint, params);
+      return data.results.map((item: any) => this.mapper.mapMediaReference(item, type)).filter(Boolean) as MediaReference[];
+    } catch (err: any) {
+      throw this.mapError(err);
+    }
+  }
+
+  public async getTopRated(type: 'movie' | 'series', options?: { language?: string; page?: number }): Promise<MediaReference[]> {
+    try {
+      const page = options?.page || 1;
+      let endpoint = type === 'movie' ? '/movie/top_rated' : '/tv/top_rated';
+      let params: Record<string, any> = { page };
+
+      if (options?.language) {
+        endpoint = type === 'movie' ? '/discover/movie' : '/discover/tv';
+        params = {
+          page,
+          with_original_language: options.language,
+          sort_by: 'vote_average.desc',
+          'vote_count.gte': 200
+        };
+      }
+
+      const data = await this.client.get<any>(endpoint, params);
+      return data.results.map((item: any) => this.mapper.mapMediaReference(item, type)).filter(Boolean) as MediaReference[];
+    } catch (err: any) {
+      throw this.mapError(err);
+    }
+  }
+
+  public async getCollection(id: string): Promise<MediaReference[]> {
+    try {
+      const cleanId = id.replace(/^tmdb_/, '').replace(/^ind_/, '');
+      const data = await this.client.get<any>(`/collection/${cleanId}`);
+      if (!data.parts) return [];
+      return data.parts.map((item: any) => this.mapper.mapMediaReference(item, 'movie')).filter(Boolean) as MediaReference[];
+    } catch (err: any) {
+      if (err.message && (err.message.includes('404') || err.message.includes('not configured') || err.message.includes('Authentication'))) return [];
       throw this.mapError(err);
     }
   }

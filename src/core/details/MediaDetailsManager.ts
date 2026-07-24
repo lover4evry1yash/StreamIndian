@@ -1,6 +1,6 @@
 import { EventBus } from '../EventBus';
 import { Logger } from '../Logger';
-import { MetadataManager } from '../metadata/MetadataManager';
+import { DetailService } from '../services/DetailService';
 import { MediaDetailsRepository } from './MediaDetailsRepository';
 import { MediaSectionBuilder } from './MediaSectionBuilder';
 import { MediaActionResolver } from './MediaActionResolver';
@@ -8,7 +8,7 @@ import { MediaDetails, MediaType } from './types';
 import { MediaDetailsEventType } from './events';
 
 export class MediaDetailsManager {
-  private metadataManager: MetadataManager;
+  private detailService: DetailService;
   private repository: MediaDetailsRepository;
   private sectionBuilder: MediaSectionBuilder;
   private actionResolver: MediaActionResolver;
@@ -16,14 +16,14 @@ export class MediaDetailsManager {
   private logger: Logger;
 
   constructor(
-    metadataManager: MetadataManager,
+    detailService: DetailService,
     repository: MediaDetailsRepository,
     sectionBuilder: MediaSectionBuilder,
     actionResolver: MediaActionResolver,
     eventBus: EventBus,
     logger: Logger
   ) {
-    this.metadataManager = metadataManager;
+    this.detailService = detailService;
     this.repository = repository;
     this.sectionBuilder = sectionBuilder;
     this.actionResolver = actionResolver;
@@ -37,17 +37,11 @@ export class MediaDetailsManager {
     try {
       let data: any;
       if (type === 'movie') {
-        data = await this.metadataManager.getMovie(id);
+        data = await this.detailService.getMovieDetails(id);
       } else if (type === 'series') {
-        data = await this.metadataManager.getSeries(id);
+        data = await this.detailService.getSeriesDetails(id);
       } else if (type === 'anime') {
-        // Anime support would call getAnime, which could fallback to TMDB for now or Anilist later
-        // Assuming we have getAnime in metadataManager, or we treat anime as series temporarily
-        if ((this.metadataManager as any).getAnime) {
-          data = await (this.metadataManager as any).getAnime(id);
-        } else {
-          data = await this.metadataManager.getSeries(id);
-        }
+        data = await this.detailService.getAnimeDetails(id);
       }
 
       if (!data) {
@@ -63,13 +57,13 @@ export class MediaDetailsManager {
       if (type === 'series' || type === 'anime') {
         // Usually default to season 1, or continue watching season
         const seasonNumber = 1; 
-        const episodes = await this.metadataManager.getEpisodes(id, seasonNumber);
+        const episodes = await this.detailService.getEpisodes(id, seasonNumber);
         if (episodes && episodes.length > 0) {
           details.activeSeason = { id: `${id}_s${seasonNumber}`, seriesId: id, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: episodes.length, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
           details.activeEpisodes = episodes;
         } else {
           details.activeSeason = { id: `${id}_s${seasonNumber}`, seriesId: id, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: 1, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
-          details.activeEpisodes = [{ id: `${id}_s${seasonNumber}_e1`, seriesId: id, seasonNumber, episodeNumber: 1, title: 'Episode 1 (Placeholder)', overview: 'Episode data unavailable.', durationMinutes: 45, images: [], artwork: {} }];
+          details.activeEpisodes = [{ id: `${id}_s${seasonNumber}_e1`, seriesId: id, seasonNumber, episodeNumber: 1, title: 'Episode 1 (Placeholder)', overview: 'Episode data unavailable.', durationMinutes: 45, images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] }, externalIds: {}, ratings: [] }];
         }
       }
 
@@ -89,7 +83,7 @@ export class MediaDetailsManager {
     this.eventBus.emit(MediaDetailsEventType.SEASON_CHANGED, { seriesId, seasonNumber });
 
     try {
-      const episodes = await this.metadataManager.getEpisodes(seriesId, seasonNumber);
+      const episodes = await this.detailService.getEpisodes(seriesId, seasonNumber);
       if (episodes && episodes.length > 0) {
         details.activeSeason = { id: `${seriesId}_s${seasonNumber}`, seriesId, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: episodes.length, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
         details.activeEpisodes = episodes;
@@ -97,7 +91,7 @@ export class MediaDetailsManager {
         this.eventBus.emit(MediaDetailsEventType.DETAILS_UPDATED, { mediaId: seriesId, mediaType: details.type, data: details });
       } else {
         details.activeSeason = { id: `${seriesId}_s${seasonNumber}`, seriesId, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: 1, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
-        details.activeEpisodes = [{ id: `${seriesId}_s${seasonNumber}_e1`, seriesId, seasonNumber, episodeNumber: 1, title: 'Episode 1 (Placeholder)', overview: 'Episode data unavailable.', durationMinutes: 45, images: [], artwork: {} }];
+        details.activeEpisodes = [{ id: `${seriesId}_s${seasonNumber}_e1`, seriesId, seasonNumber, episodeNumber: 1, title: 'Episode 1 (Placeholder)', overview: 'Episode data unavailable.', durationMinutes: 45, images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] }, externalIds: {}, ratings: [] }];
         this.repository.setActiveDetails(seriesId, details);
         this.eventBus.emit(MediaDetailsEventType.DETAILS_UPDATED, { mediaId: seriesId, mediaType: details.type, data: details });
       }

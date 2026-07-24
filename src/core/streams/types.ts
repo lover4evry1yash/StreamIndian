@@ -51,7 +51,7 @@ export interface IStreamResolver {
   readonly name: string;
   readonly priority: number;
   
-  initialize(): Promise<void>;
+  initialize(context?: any): Promise<void>;
   healthCheck(): Promise<boolean>;
   getHealth(): ResolverHealth;
   
