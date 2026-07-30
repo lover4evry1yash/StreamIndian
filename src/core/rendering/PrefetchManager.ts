@@ -31,12 +31,15 @@ export class PrefetchManager {
 
   private async onFocusChanged(focusedId: string | null) {
     if (!focusedId) return;
-    
+
     const extractMediaInfo = (nodeId: string): { type: 'movie'|'series'|'anime', id: string } | null => {
-      // Expecting something like rowId-media-movie-1234 or media-movie-1234
-      const match = nodeId.match(/media-(movie|series|anime)-(.*?)(?:-\d+)?$/);
-      if (match) {
-        return { type: match[1] as 'movie'|'series'|'anime', id: match[2] };
+      const parts = nodeId.split('__');
+      const mediaIndex = parts.indexOf('media');
+      if (mediaIndex !== -1 && mediaIndex + 2 < parts.length) {
+        const type = parts[mediaIndex + 1];
+        if (type === 'movie' || type === 'series' || type === 'anime') {
+          return { type, id: parts[mediaIndex + 2] };
+        }
       }
       return null;
     };

@@ -194,6 +194,26 @@ export class ImageManager {
   }
 
   private processQueue() {
+    // If we have high priority items in queue, but all slots are taken by low priority, preempt them.
+    const hasHighPriorityQueued = this.queue.some(url => this.requests.get(url)?.priority === 'high');
+    if (hasHighPriorityQueued && this.currentLoads >= this.MAX_CONCURRENT_LOADS) {
+      // Find low priority loading requests
+      const loadingReqs = Array.from(this.requests.values()).filter(r => r.state === 'loading' && r.priority === 'low');
+      for (const req of loadingReqs) {
+        if (this.currentLoads < this.MAX_CONCURRENT_LOADS) break;
+        // Abort the low priority request
+        req.aborted = true;
+        if (req.abort) {
+          req.abort();
+          req.abort = undefined;
+        }
+        // Move it back to the queue (at the end) so it can retry later if needed
+        req.state = 'queued';
+        this.queue.push(req.url);
+        // currentLoads is decremented when the aborted promise rejects in loadArtworkRequest
+      }
+    }
+
     while (this.currentLoads < this.MAX_CONCURRENT_LOADS && this.queue.length > 0) {
       const url = this.queue.shift();
       if (!url) continue;

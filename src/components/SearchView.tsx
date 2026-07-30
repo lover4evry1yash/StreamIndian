@@ -151,7 +151,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectMedia, selectedL
               {results.map((media, idx) => (
                 <div key={media.id} className="w-full">
                   <TVPoster
-                    id={`search-media-${media.id}`}
+                    id={`search__media__${media.mediaType}__${media.id}`}
                     groupId="search-results"
                     imageUrl={media.posterUrl}
                     title={media.title}

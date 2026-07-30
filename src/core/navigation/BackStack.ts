@@ -2,6 +2,7 @@ export interface BackStackEntry {
   type: 'route' | 'modal';
   id: string;
   data?: any;
+  focusedId?: string;
 }
 
 export class BackStack {

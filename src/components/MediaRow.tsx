@@ -43,7 +43,7 @@ export const MediaRow: React.FC<MediaRowProps> = ({
   return (
     <TVRow title={title}>
       {items.map((media, index) => {
-        const cardId = `${rowId}-media-${media.mediaType}-${media.id}-${index}`;
+        const cardId = `${rowId}__media__${media.mediaType}__${media.id}__${index}`;
         const totalDurationSeconds = (media.durationMinutes || 120) * 60;
         const progressPercent = Math.min(100, Math.round(((progressMap[media.id] || 0) / totalDurationSeconds) * 100));
 

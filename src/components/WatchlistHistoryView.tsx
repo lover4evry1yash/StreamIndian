@@ -107,7 +107,7 @@ export const WatchlistHistoryView: React.FC<WatchlistHistoryViewProps> = ({ onSe
             {watchlistMedia.map((media, idx) => (
               <div key={media.id} className="w-full">
                 <TVPoster
-                  id={`watchlist-media-${media.id}`}
+                  id={`watchlist__media__${media.mediaType}__${media.id}`}
                   groupId="watchlist"
                   imageUrl={media.posterUrl}
                   title={media.title}
