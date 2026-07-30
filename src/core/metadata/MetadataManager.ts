@@ -12,6 +12,18 @@ export class MetadataManager {
   private repository: MetadataRepository;
   private eventBus: EventBus;
   private logger: Logger;
+  private inFlightRequests = new Map<string, Promise<any>>();
+
+  private deduplicate<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+    if (this.inFlightRequests.has(key)) {
+      return this.inFlightRequests.get(key) as Promise<T>;
+    }
+    const promise = fetcher().finally(() => {
+      this.inFlightRequests.delete(key);
+    });
+    this.inFlightRequests.set(key, promise);
+    return promise;
+  }
 
   constructor(
     aggregator: MetadataAggregator, 
@@ -45,17 +57,20 @@ export class MetadataManager {
   }
 
   public async getMovie(id: string, forceRefresh: boolean = false): Promise<Movie | null> {
+    let cached: Movie | null = null;
     if (!forceRefresh) {
-      const cached = await this.repository.getMovie(id);
-      if (cached) return cached;
+      cached = await this.repository.getMovie(id);
+      if (cached) {
+         // Fire off a background refresh (Stale-While-Revalidate)
+         this.refreshMovieInBackground(id).catch(e => this.logger.warn(`Background refresh failed for movie ${id}`, e));
+         return cached;
+      }
     }
 
     try {
-      const result = await this.withTimeout(this.aggregator.getMovie(id), 10000);
+      const result = await this.deduplicate(`movie:${id}`, () => this.withTimeout(this.aggregator.getMovie(id), 10000));
 
       if (result) {
-        // Providers return their mapped Domain Models.
-        // The ValidationLayer ensures no malformed data enters the application state.
         const validated = ValidationLayer.validateMovie(result);
         await this.repository.saveMovie(id, validated);
         this.eventBus.emit(MetadataEventType.LOADED, { type: 'movie', id, data: validated });
@@ -69,14 +84,31 @@ export class MetadataManager {
     return null;
   }
 
+  private async refreshMovieInBackground(id: string): Promise<void> {
+     try {
+       const result = await this.deduplicate(`movie:${id}`, () => this.withTimeout(this.aggregator.getMovie(id), 15000));
+       if (result) {
+          const validated = ValidationLayer.validateMovie(result);
+          await this.repository.saveMovie(id, validated);
+          this.eventBus.emit(MetadataEventType.UPDATED, { type: 'movie', id, data: validated });
+       }
+     } catch(e) {
+       // Ignore background errors
+     }
+  }
+
   public async getSeries(id: string, forceRefresh: boolean = false): Promise<Series | null> {
+    let cached: Series | null = null;
     if (!forceRefresh) {
-      const cached = await this.repository.getSeries(id);
-      if (cached) return cached;
+      cached = await this.repository.getSeries(id);
+      if (cached) {
+         this.refreshSeriesInBackground(id).catch(e => this.logger.warn(`Background refresh failed for series ${id}`, e));
+         return cached;
+      }
     }
 
     try {
-      const result = await this.withTimeout(this.aggregator.getSeries(id), 10000);
+      const result = await this.deduplicate(`series:${id}`, () => this.withTimeout(this.aggregator.getSeries(id), 10000));
 
       if (result) {
         const validated = ValidationLayer.validateSeries(result);
@@ -92,6 +124,19 @@ export class MetadataManager {
     return null;
   }
 
+  private async refreshSeriesInBackground(id: string): Promise<void> {
+     try {
+       const result = await this.deduplicate(`series:${id}`, () => this.withTimeout(this.aggregator.getSeries(id), 15000));
+       if (result) {
+          const validated = ValidationLayer.validateSeries(result);
+          await this.repository.saveSeries(id, validated);
+          this.eventBus.emit(MetadataEventType.UPDATED, { type: 'series', id, data: validated });
+       }
+     } catch(e) {
+       // Ignore background errors
+     }
+  }
+
   public async getEpisodes(seriesId: string, seasonNumber: number, forceRefresh: boolean = false): Promise<Episode[] | null> {
     if (!forceRefresh) {
       const cached = await this.repository.getEpisodes(seriesId, seasonNumber);
@@ -99,7 +144,7 @@ export class MetadataManager {
     }
 
     try {
-      const result = await this.withTimeout(this.aggregator.getEpisodes(seriesId, seasonNumber), 10000);
+      const result = await this.deduplicate(`episodes:${seriesId}:${seasonNumber}`, () => this.withTimeout(this.aggregator.getEpisodes(seriesId, seasonNumber), 10000));
 
       if (result && Array.isArray(result)) {
         const validated = result.map((e: any) => {
@@ -209,9 +254,9 @@ export class MetadataManager {
     // We execute these asynchronously and don't await the result to block the caller.
     // They populate the cache in the background.
     if (type === 'movie') {
-      this.getMovie(id).catch(() => {});
+      await this.getMovie(id).catch(() => {});
     } else {
-      this.getSeries(id).catch(() => {});
+      await this.getSeries(id).catch(() => {});
     }
     
     this.eventBus.emit(MetadataEventType.PREFETCHED, { type, id });

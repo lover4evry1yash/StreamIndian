@@ -1,3 +1,4 @@
+import { ProviderContext } from "../../../providers/types";
 import { ProviderHealth, ProviderStatus, ProviderCapabilities } from '../../../providers/types';
 import { IDebridProvider, DebridProviderHealth, TransferResult, TransferStatus, DebridLimits, DebridDiagnostics } from '../types';
 
@@ -23,7 +24,7 @@ export class AllDebridProvider implements IDebridProvider {
     this.priority = priority;
   }
 
-  public async initialize(context?: any): Promise<void> { this.isAvailable = true; }
+  public async initialize(context: ProviderContext): Promise<void> { this.isAvailable = true; }
   public async shutdown(): Promise<void> {}
   
   public async healthCheck(): Promise<ProviderHealth> {

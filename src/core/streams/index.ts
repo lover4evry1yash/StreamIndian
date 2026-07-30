@@ -8,5 +8,5 @@ export * from './sources/providers/DirectHttpProvider';
 export * from './sources/providers/HlsProvider';
 export * from './sources/providers/DashProvider';
 export * from './sources/providers/TorrentSourceProvider';
-export * from './sources/providers/StremioProvider';
+export * from './sources/providers/GatewaySourceProvider';
 export * from './debrid';

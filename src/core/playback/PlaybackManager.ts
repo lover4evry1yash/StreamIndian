@@ -84,7 +84,8 @@ export class PlaybackManager {
       case AVPlayPlayerState.ERROR:
         this.handlePlaybackError({
           category: PlaybackErrorCategory.AVPLAY,
-          message: 'AVPlay reported an error state'
+          message: info.errorDetails ? `AVPlay Error: ${typeof info.errorDetails === 'object' ? JSON.stringify(info.errorDetails) : info.errorDetails}` : 'AVPlay reported an error state',
+          originalError: info.errorDetails
         });
         return; // Error handled separately
     }
@@ -138,14 +139,21 @@ export class PlaybackManager {
   }
 
   private async handlePlaybackError(error: PlaybackError) {
-    this.logger.error(`[PlaybackManager] Error: ${error.category} - ${error.message}`);
+    const isDecodeError = error.message.toLowerCase().includes('decode') || 
+                          (error.originalError && String(error.originalError).toLowerCase().includes('decode'));
+                          
+    if (isDecodeError) {
+      this.logger.warn(`[PlaybackManager] Decode Warning: ${error.category} - ${error.message}`);
+    } else {
+      this.logger.error(`[PlaybackManager] Error: ${error.category} - ${error.message}`);
+    }
     this.setState(PlaybackState.ERROR);
     
     const shouldRetry = error.category === PlaybackErrorCategory.NETWORK || 
                         error.category === PlaybackErrorCategory.TIMEOUT ||
                         error.category === PlaybackErrorCategory.AVPLAY;
 
-    if (shouldRetry && this.retryCount < this.config.maxRetries && this.lastStreamSource && this.lastMedia && this.session) {
+    if (shouldRetry && !isDecodeError && this.retryCount < this.config.maxRetries && this.lastStreamSource && this.lastMedia && this.session) {
       this.retryCount++;
       const delay = this.config.retryDelayMs * Math.pow(2, this.retryCount - 1);
       this.logger.info(`[PlaybackManager] Retrying playback (${this.retryCount}/${this.config.maxRetries}) in ${delay}ms...`);
@@ -259,6 +267,17 @@ export class PlaybackManager {
 
   public getState(): PlaybackState {
     return this.currentState;
+  }
+
+  public getDiagnostics() {
+    return {
+      currentState: this.currentState,
+      sessionActive: !!this.session,
+      retryCount: this.retryCount,
+      audioTracksAvailable: this.getAudioTracks().length,
+      subtitleTracksAvailable: this.getSubtitleTracks().length,
+      currentProgress: this.session ? Math.floor(this.session.currentTime) : 0,
+    };
   }
 
   // Audio & Subtitles (Delegates to AVPlayManager if supported, else stubs)

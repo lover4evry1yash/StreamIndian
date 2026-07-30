@@ -64,3 +64,14 @@ This file records key architectural decisions made in the StreamIndian codebase,
 - **Consequences**:
   - Prevents network thread starvation during fast scrolling.
   - Maintains stable RAM usage during long browsing sessions.
+
+---
+
+## ADR 006: Git Repository Recovery Protocol
+- **Status**: Accepted
+- **Date**: 2026-07-27
+- **Context**: A corrupt Git loose object (`fatal: loose object ... is corrupt`) caused the repository to enter a broken state. In the AI Studio disposable sandbox environment (which lacks a remote origin), the `.git` directory was destroyed and recreated to unblock development.
+- **Decision**: In a temporary, isolated sandbox without a remote origin, recreating the `.git` directory is an acceptable last-resort unblocking mechanism. However, for a real repository, destroying `.git` is strictly forbidden because it destroys commit history, branches, tags, reflogs, and remote configuration.
+- **Consequences**:
+  - `rm -rf .git` is explicitly banned for repository repairs outside of ephemeral sandbox environments.
+  - Any future Git corruption in a connected repository must be handled non-destructively using `git fsck`, `git fetch origin`, and `git reset --hard origin/main`, or by restoring missing objects from the remote.

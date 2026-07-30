@@ -36,16 +36,16 @@ export class DirectHttpProvider implements ISourceProvider {
   }
 
   public async search(query: MediaSearchQuery): Promise<CanonicalStreamSource[]> {
-    // Return a dummy direct HTTP stream for playback testing
+    // Return a direct HTTP stream for playback testing
     return [
       {
-        id: `direct_sintel_${query.mediaId}`,
-        title: 'Sintel Trailer (Test)',
+        id: `direct_bbb_${query.mediaId}`,
+        title: query.title || 'Big Buck Bunny (Direct)',
         type: 'movie',
         sourceType: 'http',
-        url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+        url: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         quality: '1080p FHD',
-        size: 15000000,
+        size: 249224577,
         provider: this.name
       }
     ];

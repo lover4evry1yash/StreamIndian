@@ -17,7 +17,9 @@ const AuditPanel = React.lazy(() => import('./components/AuditPanel').then(modul
 const SearchView = React.lazy(() => import('./components/SearchView').then(module => ({ default: module.SearchView })));
 const WatchlistHistoryView = React.lazy(() => import('./components/WatchlistHistoryView').then(module => ({ default: module.WatchlistHistoryView })));
 const SettingsView = React.lazy(() => import('./components/SettingsView').then(module => ({ default: module.SettingsView })));
-import { MediaItem, StreamSource } from './types/tizen';
+const IPTVView = React.lazy(() => import('./components/IPTVView').then(module => ({ default: module.IPTVView })));
+
+import { MediaItem, StreamSource, PlaybackReadiness } from './types/tizen';
 import { tizenKeyController } from './core/tizenKeys';
 import { TVHero, TVButton } from './design-system';
 import { Play, Info, Star } from 'lucide-react';
@@ -109,7 +111,7 @@ export default function App() {
         />
 
         {/* Tab Views */}
-        {activeTab === 'nav-home' && (
+        {['nav-home', 'nav-movies', 'nav-series', 'nav-anime'].includes(activeTab) && (
           <main className="space-y-6">
             {/* Spotlight Hero Banner */}
             {heroItem && (
@@ -147,7 +149,13 @@ export default function App() {
 
             {/* Categorized TV Shelves */}
             <div className="pb-20">
-              {shelves.map(shelf => (
+              {shelves.filter(shelf => {
+                if (activeTab === 'nav-movies') return shelf.id.includes('movie');
+                if (activeTab === 'nav-series') return shelf.id.includes('series');
+                if (activeTab === 'nav-anime') return shelf.id.includes('anime') || shelf.title.toLowerCase().includes('anime');
+                if (activeTab === 'nav-livetv') return shelf.id.includes('livetv');
+                return true;
+              }).map(shelf => (
                 <MediaRow key={shelf.id} rowId={shelf.id} title={shelf.title} subtitle={shelf.subtitle || ''} items={shelf.items} onSelectMedia={setSelectedMedia} />
               ))}
             </div>
@@ -165,6 +173,37 @@ export default function App() {
         
 
         <Suspense fallback={<div />}>{activeTab === 'nav-watchlist' && <WatchlistHistoryView onSelectMedia={setSelectedMedia} />}</Suspense>
+        <Suspense fallback={<div />}>{activeTab === 'nav-livetv' && <IPTVView onSelectChannel={(channel) => {
+           const media: MediaItem = {
+              id: channel.id,
+              title: channel.name, originalTitle: channel.name,
+              mediaType: 'movie', 
+              language: 'English',
+              year: new Date().getFullYear(),
+              durationMinutes: 0,
+              rating: '',
+              imdbRating: 0,
+              genres: [channel.group || 'Live TV'],
+              posterUrl: channel.logo || '',
+              backdropUrl: channel.logo || '',
+              description: 'Live TV Channel',
+              cast: [],
+              director: '',
+              provider: 'iptv',
+              isTrending: false,
+              isRegionalHero: false,
+              streams: [{
+                 id: channel.id,
+                 url: channel.streamUrl,
+                 quality: '1080p FHD',
+                 providerName: 'IPTV',
+                 format: 'HLS',
+                 isLegalPublicStream: false,
+                 readiness: PlaybackReadiness.DIRECT
+              }]
+           };
+           handleStartPlayback(media, media.streams[0], 0);
+        }} />}</Suspense>
 
         <Suspense fallback={<div />}>{activeTab === 'nav-audit' && <AuditPanel />}</Suspense>
 
@@ -177,6 +216,7 @@ export default function App() {
           <UniversalMediaDetailView
             mediaId={selectedMedia.id}
             mediaType={selectedMedia.mediaType}
+            initialMedia={selectedMedia}
             onClose={() => setSelectedMedia(null)}
             onPlay={(media, stream, startPosition) => {
               handleStartPlayback(media, stream, startPosition || 0);

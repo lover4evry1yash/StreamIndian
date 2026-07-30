@@ -45,6 +45,7 @@ export const TVPoster: React.FC<TVPosterProps> = ({
               src={imageUrl}
               alt={title}
               className="w-full h-full object-cover"
+              priority={isFocused ? 'high' : 'low'}
             />
             <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 ${isFocused ? 'opacity-100' : 'opacity-0'}`} />
           </div>

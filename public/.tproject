@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<tproject xmlns="http://www.tizen.org/tproject">
+    <platforms>
+        <platform>
+            <name>tv-samsung-5.0</name>
+        </platform>
+    </platforms>
+    <build>
+        <plugins>
+            <plugin>
+                <name>org.tizen.web.build.wgt</name>
+                <version>1.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</tproject>

@@ -17,6 +17,8 @@ interface ArtworkRequest {
   blobUrl?: string; // The local Blob URL we generated
   refCount: number;
   lastAccessed: number;
+  abort?: () => void;
+  aborted?: boolean;
 }
 
 export interface ImageDiagnostics {
@@ -112,7 +114,15 @@ export class ImageManager {
         } else if (req.state === 'queued' || req.state === 'requested') {
           this.queue = this.queue.filter(q => q !== url);
           req.resolveCallbacks.forEach(cb => cb(null));
-          this.requests.delete(url);
+          if (this.requests.get(url) === req) this.requests.delete(url);
+        } else if (req.state === 'loading') {
+          req.aborted = true;
+          if (req.abort) {
+            req.abort();
+            req.abort = undefined;
+          }
+          req.resolveCallbacks.forEach(cb => cb(null));
+          if (this.requests.get(url) === req) this.requests.delete(url);
         }
       }
     }
@@ -151,6 +161,36 @@ export class ImageManager {
       if (a.priority === b.priority) return b.lastAccessed - a.lastAccessed;
       return a.priority === 'high' ? -1 : (b.priority === 'high' ? 1 : 0);
     });
+    
+    // Prune obsolete low-priority requests to prevent queue starvation
+    const PRUNE_THRESHOLD = 40;
+    if (this.queue.length > PRUNE_THRESHOLD) {
+      const keepQueue: string[] = [];
+      const dropQueue: string[] = [];
+      
+      for (let i = 0; i < this.queue.length; i++) {
+        const url = this.queue[i];
+        if (i < PRUNE_THRESHOLD) {
+          keepQueue.push(url);
+        } else {
+          const req = this.requests.get(url);
+          if (req && req.refCount === 0 && req.priority === 'low') {
+            dropQueue.push(url);
+          } else {
+            keepQueue.push(url);
+          }
+        }
+      }
+      
+      this.queue = keepQueue;
+      for (const url of dropQueue) {
+        const req = this.requests.get(url);
+        if (req) {
+          req.resolveCallbacks.forEach(cb => cb(null));
+          if (this.requests.get(url) === req) this.requests.delete(url);
+        }
+      }
+    }
   }
 
   private processQueue() {
@@ -170,7 +210,8 @@ export class ImageManager {
   private async loadArtworkRequest(req: ArtworkRequest) {
     const startTime = Date.now();
     let finalBlobUrl: string | null = null;
-    
+    let isAborted = false;
+        
     try {
       if (req.url.startsWith('artwork://')) {
         // e.g. artwork://movie/1234/poster
@@ -178,31 +219,44 @@ export class ImageManager {
         const mediaType = parts[2] as 'movie' | 'series';
         const mediaId = parts[3];
         const artType = parts[4] as ArtworkType;
-        
+                
         const artworkSet = await this.artworkAgg.getArtwork(mediaId, mediaType);
+        if (req.aborted) throw new Error('Aborted');
         if (artworkSet) {
            const fallbacks = this.getFallbackChain(artworkSet, artType);
            for (const img of fallbacks) {
               try {
                  const variantUrl = this.selectVariant(img.url, artType, req.priority);
-                 finalBlobUrl = await this.downloadImageAsBlob(variantUrl);
+                 finalBlobUrl = await this.downloadImageAsBlob(variantUrl, req);
                  if (finalBlobUrl) break; // Found a working image!
-              } catch (e) {
+              } catch (e: any) {
+                 if (e.message === 'Aborted') {
+                    isAborted = true;
+                    break;
+                 }
                  this.logger.debug(`ImageManager: Failed to load fallback ${img.url}, trying next.`);
               }
            }
         }
       } else if (req.url.startsWith('http')) {
         // Standard URL handling
-        finalBlobUrl = await this.downloadImageAsBlob(req.url);
+        finalBlobUrl = await this.downloadImageAsBlob(req.url, req);
       }
-    } catch (e) {
-      const cleanUrl = req.url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
-      this.logger.debug(`ImageManager: Failed to load ${cleanUrl}`, e);
+    } catch (e: any) {
+      if (e.message === 'Aborted') {
+         isAborted = true;
+      } else {
+         const cleanUrl = req.url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
+         this.logger.debug(`ImageManager: Failed to load ${cleanUrl}`, e);
+      }
+    }
+    this.currentLoads--;
+        
+    if (isAborted) {
+      this.processQueue();
+      return;
     }
 
-    this.currentLoads--;
-    
     if (finalBlobUrl) {
       req.state = 'cached';
       req.blobUrl = finalBlobUrl;
@@ -213,17 +267,46 @@ export class ImageManager {
       this.diagnostics.failedLoads++;
       const placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
       req.resolveCallbacks.forEach(cb => cb(placeholder));
-      this.requests.delete(req.url); // Allow retry later
+      if (this.requests.get(req.url) === req) {
+        this.requests.delete(req.url); // Allow retry later
+      }
     }
     req.resolveCallbacks = [];
     this.processQueue();
   }
 
-  private async downloadImageAsBlob(url: string): Promise<string> {
-    const res = await this.network.fetch(url, { timeoutMs: 10000, retries: 1 });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
+  private async downloadImageAsBlob(url: string, req: ArtworkRequest): Promise<string> {
+    if (req.aborted) return Promise.reject(new Error('Aborted'));
+    // Use an Image object to preload it, bypassing CORS restrictions for fetch
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      let isSettled = false;
+      
+      req.abort = () => {
+        if (isSettled) return;
+        isSettled = true;
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+        reject(new Error('Aborted'));
+      };
+      
+      img.onload = () => {
+        if (isSettled) return;
+        isSettled = true;
+        req.abort = undefined;
+        resolve(url);
+      };
+      
+      img.onerror = () => {
+        if (isSettled) return;
+        isSettled = true;
+        req.abort = undefined;
+        reject(new Error('Failed to load image via Image object'));
+      };
+      
+      img.src = url;
+    });
   }
 
   private selectVariant(url: string, type: ArtworkType, priority: ArtworkPriority): string {
@@ -260,9 +343,9 @@ export class ImageManager {
         
       while (evictable.length > 0 && cachedCount > this.MAX_CACHED_IMAGES * 0.8) {
         const toEvict = evictable.shift()!;
-        if (toEvict.blobUrl) URL.revokeObjectURL(toEvict.blobUrl);
+        if (toEvict.blobUrl && toEvict.blobUrl.startsWith("blob:")) URL.revokeObjectURL(toEvict.blobUrl);
         toEvict.blobUrl = undefined;
-        this.requests.delete(toEvict.url);
+        if (this.requests.get(toEvict.url) === toEvict) this.requests.delete(toEvict.url);
         cachedCount--;
         this.diagnostics.evictions++;
       }

@@ -7,18 +7,17 @@ This directory contains the central orchestrators for UI rendering and artwork f
 The rendering pipeline flows downward:
 
 1. **UI Screens** (`App.tsx`, `UniversalMediaDetailView.tsx`)
-2. **VirtualCarousel**: Renders only the items in the immediate vicinity of the user's `focusedIndex`.
+2. **MediaRow/TVRow**: Renders horizontal lists of content. Poster virtualization is NOT implemented; instead, `ImageManager` uses dynamic queue prioritization to manage the load.
 3. **LazyImage**: Component that intercepts `<img src>` calls, routing them through the ArtworkManager and displaying a placeholder.
 4. **ArtworkManager**: Central service to manage artwork prioritization, load queues, deduplication, and lifecycle tracking.
 5. **ImageCache**: Interfaces with IndexedDB/Storage for durable caching.
 6. **PrefetchManager**: Automatically instructs ArtworkManager and MetadataManager to preload assets adjacent to the current focus point.
 
-## Focus-Driven Virtualization
+## Dynamic Queue Prioritization
 
-`VirtualCarousel` tracks `focusedIndex` (intercepted via native `onFocusCapture`). The active DOM window guarantees:
-- The currently focused item is mounted.
-- At least `overscan` (e.g. 2) items in either direction are mounted.
-- When FocusEngine shifts focus, the native `scrollIntoView` correctly scrolls the row. This makes it a seamless spatial interaction.
+Since poster virtualization is NOT implemented in standard rows, rapid D-pad scrolling could normally result in queue starvation. The engine mitigates this via:
+- Dynamic focus priority promotion (focused items are immediately promoted to high priority).
+- A hard queue-pruning threshold (dropping low-priority speculative requests that fall too far behind the queue head).
 
 ## Image Lifecycle Flow
 

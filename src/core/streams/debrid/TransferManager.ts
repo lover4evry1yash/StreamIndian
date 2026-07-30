@@ -20,7 +20,13 @@ export class TransferManager {
   private debridManager: DebridManager;
   private activeTransfers: Map<string, ActiveTransfer> = new Map();
   private maxConcurrentTransfers = 3;
-  private pollTimer: any = null;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  private diagnostics = {
+    totalTransfersInitiated: 0,
+    totalTransfersCompleted: 0,
+    totalTransfersFailed: 0,
+  };
 
   constructor(eventBus: EventBus, logger: Logger, debridManager: DebridManager) {
     this.eventBus = eventBus;
@@ -40,7 +46,17 @@ export class TransferManager {
       }
   }
 
+  public getDiagnostics() {
+    return {
+      activeTransfers: this.activeTransfers.size,
+      totalTransfersInitiated: this.diagnostics.totalTransfersInitiated,
+      totalTransfersCompleted: this.diagnostics.totalTransfersCompleted,
+      totalTransfersFailed: this.diagnostics.totalTransfersFailed,
+    };
+  }
+
   public async initiateTransfer(infoHash: string, magnet?: string, title?: string, preferredProvider?: string): Promise<TransferResult | null> {
+    this.diagnostics.totalTransfersInitiated++;
     if (this.activeTransfers.has(infoHash)) {
        return {
           transferId: this.activeTransfers.get(infoHash)!.transferId,

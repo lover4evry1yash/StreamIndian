@@ -1,3 +1,5 @@
+import { IdMapperService } from './IdMapperService';
+import { IArtworkProvider } from '../providers/types';
 import { ProviderManager, ProviderCapability, IMetadataProvider, ProviderMergePolicy } from '../providers';
 import { Logger } from '../Logger';
 import { Movie, Series, Anime, Episode, MediaReference, UserList } from '../models/DomainModels';
@@ -7,15 +9,18 @@ export class MetadataAggregator {
   private providerManager: ProviderManager;
   private mergePolicy: ProviderMergePolicy;
   private logger: Logger;
+  private idMapper: IdMapperService;
 
   constructor(
     providerManager: ProviderManager,
     mergePolicy: ProviderMergePolicy,
-    logger: Logger
+    logger: Logger,
+    idMapper: IdMapperService
   ) {
     this.providerManager = providerManager;
     this.mergePolicy = mergePolicy;
     this.logger = logger;
+    this.idMapper = idMapper;
   }
 
   public async getMovie(id: string): Promise<Movie | null> {

@@ -13,7 +13,7 @@ export interface StreamResolution {
   title: string;
   url: string;
   quality: '4K HDR' | '4K' | '1080p FHD' | '720p HD' | 'SD' | 'UNKNOWN';
-  format: 'HLS' | 'DASH' | 'MP4' | 'MKV' | 'UNKNOWN';
+  format: 'HLS' | 'DASH' | 'MP4' | 'MKV' | 'UNKNOWN' | 'TORRENT';
   codec?: string;
   audioChannels?: string;
   subtitles?: string[];
@@ -81,6 +81,7 @@ export interface CanonicalStreamSource {
   url?: string;
   magnet?: string;
   infoHash?: string;
+  fileIndex?: number;
   torrentFile?: string;
   quality: '4K HDR' | '4K' | '1080p FHD' | '720p HD' | 'SD' | 'UNKNOWN';
   resolution?: string;

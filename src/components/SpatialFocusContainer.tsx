@@ -3,10 +3,8 @@
  * Provides remote-friendly focus management (Up, Down, Left, Right, Enter, Return)
  * with TV highlight rings and automatic scrolling.
  */
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useNavigationManager, useEventBus } from '../context/ServiceContext';
-import { NavigationManager } from '../core/navigation';
 
 interface SpatialFocusContextType {
   focusedId: string;
@@ -34,16 +32,19 @@ interface SpatialFocusProviderProps {
 
 export const SpatialFocusProvider: React.FC<SpatialFocusProviderProps> = ({ children, onBackKey }) => {
   const [focusedId, setFocusedId] = useState<string>('');
-  
-  // Connect to the core FocusEngine
+
   const navManager = useNavigationManager();
   const eventBus = useEventBus();
+
+  if (typeof window !== 'undefined') {
+    (window as any).__FOCUS_ENGINE__ = navManager.focusEngine;
+  }
 
   useEffect(() => {
     if (onBackKey) {
       navManager.setCustomBackHandler(() => {
         onBackKey();
-        return true; // Indicate it was handled
+        return true;
       });
     } else {
       navManager.setCustomBackHandler(() => false);
@@ -52,43 +53,52 @@ export const SpatialFocusProvider: React.FC<SpatialFocusProviderProps> = ({ chil
 
   useEffect(() => {
     const handleFocusChanged = (newFocusedId: string) => {
+      console.log(`[NAV_LOG] [SpatialFocusContainer] focusedId state changed to: '${newFocusedId}'`);
       setFocusedId(newFocusedId);
     };
-    
+
     eventBus.on('FOCUS_CHANGED', handleFocusChanged);
     return () => {
       eventBus.off('FOCUS_CHANGED', handleFocusChanged);
     };
-  }, []);
+  }, [eventBus]);
 
-  const registerFocusable = (id: string, element: HTMLElement, groupId: string = 'main', onSelected?: () => void) => {
+  const registerFocusable = React.useCallback((id: string, element: HTMLElement, groupId: string = 'main', onSelected?: () => void) => {
     navManager.focusEngine.registerNode({
       id,
       groupId,
       getElement: () => element,
       onSelected
     });
-  };
+  }, [navManager.focusEngine]);
 
-  const unregisterFocusable = (id: string) => {
+  const unregisterFocusable = React.useCallback((id: string) => {
     navManager.focusEngine.unregisterNode(id);
-  };
+  }, [navManager.focusEngine]);
 
-  const registerGroup = (groupName: string, trapFocus: boolean = false) => {
+  const registerGroup = React.useCallback((groupName: string, trapFocus: boolean = false) => {
     navManager.focusEngine.registerGroup(groupName, trapFocus);
-  };
+  }, [navManager.focusEngine]);
+
+  const setFocusedIdCallback = React.useCallback((id: string) => {
+    navManager.focusEngine.setFocusedNode(id);
+  }, [navManager.focusEngine]);
+
+  const setActiveGroupCallback = React.useCallback((id: string) => {
+    navManager.focusEngine.setActiveGroup(id);
+  }, [navManager.focusEngine]);
+
+  const contextValue = React.useMemo(() => ({
+    focusedId,
+    setFocusedId: setFocusedIdCallback,
+    registerFocusable,
+    unregisterFocusable,
+    registerGroup,
+    setActiveGroup: setActiveGroupCallback,
+  }), [focusedId, setFocusedIdCallback, registerFocusable, unregisterFocusable, registerGroup, setActiveGroupCallback]);
 
   return (
-    <SpatialFocusContext.Provider
-      value={{
-        focusedId,
-        setFocusedId: (id) => navManager.focusEngine.setFocusedNode(id),
-        registerFocusable,
-        unregisterFocusable,
-        registerGroup,
-        setActiveGroup: (id) => navManager.focusEngine.setActiveGroup(id),
-      }}
-    >
+    <SpatialFocusContext.Provider value={contextValue}>
       {children}
     </SpatialFocusContext.Provider>
   );

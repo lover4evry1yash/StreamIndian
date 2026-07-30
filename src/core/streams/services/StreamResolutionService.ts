@@ -22,7 +22,10 @@ export class StreamResolutionService {
   public async resolve(sources: CanonicalStreamSource[], options?: StreamSortOptions): Promise<StreamSource[]> {
     // We pass options here if ResolutionManager still needs it for initial direct fallback mapping,
     // though the sorting will actually happen in StreamSortingService afterwards.
-    return await this.resolutionManager.resolve(sources);
+    console.log(`[StreamResolutionService] Input canonical count: ${sources.length}`);
+    const results = await this.resolutionManager.resolve(sources);
+    console.log(`[StreamResolutionService] Output StreamSource count: ${results.length}`);
+    return results;
   }
 
   public async prepareStream(
@@ -39,16 +42,25 @@ export class StreamResolutionService {
     }
 
     const infoHash = (stream as any).streamSource?.infoHash || 
-                      (stream.url && stream.url.includes('btih:') ? stream.url.split('btih:')[1]?.split('&')[0] : 'stremiohash12345');
+                      (stream.url && stream.url.includes('btih:') ? stream.url.split('btih:')[1]?.split('&')[0] : null);
+                      
+    if (!infoHash) {
+        console.error('[StreamResolutionService] Debrid resolution requested but source has no torrent identifier.');
+        return null;
+    }
+
     const magnet = (stream as any).streamSource?.magnet || (stream.url?.startsWith('magnet:') ? stream.url : undefined);
     
     if (onProgress) onProgress(10, 'Initiating Debrid Transfer...');
     
-    await this.transferManager.initiateTransfer(infoHash, magnet, stream.providerName);
+    await this.transferManager.initiateTransfer(infoHash, magnet);
     
     if (onProgress) onProgress(50, 'Resolving Debrid Stream...');
     
-    const resolved = await this.debridManager.resolve(infoHash);
+    const fileIndex = (stream as any).streamSource?.fileIndex;
+    console.log('[StreamResolutionService] TorBox resolving infoHash:', !!infoHash);
+    const resolved = await this.debridManager.resolve(infoHash, undefined, fileIndex);
+    console.log('[StreamResolutionService] TorBox resolution success:', !!resolved, 'url exists:', !!resolved?.url);
     
     if (onProgress) onProgress(100, 'Stream ready!');
     await new Promise(r => setTimeout(r, 300));

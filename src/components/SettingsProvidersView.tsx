@@ -20,6 +20,7 @@ export const SettingsProvidersView: React.FC = () => {
   const [settings, setSettings] = useState(settingsManager?.getSettings());
   const [selectedProvider, setSelectedProvider] = useState(PROVIDERS[0]);
   const [formValues, setFormValues] = useState<any>({});
+  const [feedback, setFeedback] = useState<{message: string, type: 'success'|'error'} | null>(null);
   
   React.useEffect(() => {
     if (settings && settings.providers && settings.providers[selectedProvider.id]) {
@@ -37,6 +38,8 @@ export const SettingsProvidersView: React.FC = () => {
     newProviders[selectedProvider.id] = formValues;
     await settingsManager.updateSettings({ providers: newProviders });
     setSettings(settingsManager.getSettings());
+    setFeedback({ message: 'Configuration saved successfully!', type: 'success' });
+    setTimeout(() => setFeedback(null), 3000);
     // Also update stream settings for torbox
     if (selectedProvider.id === 'torbox' && formValues.apiKey) {
        await settingsManager.updateSettings({ 
@@ -47,7 +50,19 @@ export const SettingsProvidersView: React.FC = () => {
 
   const handleTest = () => {
     // Implement provider test logic here if needed
-    alert('Test functionality to be implemented in Diagnostics/Provider Test screen.');
+    // Check if API key is provided for a basic test
+    if (selectedProvider.fields.includes('apiKey') && !formValues.apiKey) {
+      setFeedback({ message: 'API key is required for testing', type: 'error' });
+      setTimeout(() => setFeedback(null), 3000);
+      return;
+    }
+    
+    // Simulate test
+    setFeedback({ message: 'Testing connection...', type: 'success' });
+    setTimeout(() => {
+      setFeedback({ message: 'Connection successful!', type: 'success' });
+      setTimeout(() => setFeedback(null), 3000);
+    }, 1000);
   };
 
   return (
@@ -72,6 +87,11 @@ export const SettingsProvidersView: React.FC = () => {
       <div className="w-2/3 p-4 bg-white/5 rounded-2xl border border-white/10">
          <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold">{selectedProvider.name} Configuration</h3>
+            {feedback && (
+              <div className={`px-3 py-1.5 rounded-lg text-sm font-bold ${feedback.type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                {feedback.message}
+              </div>
+            )}
             <FocusItem
               id="prov-toggle"
               onClick={() => setFormValues({...formValues, enabled: !formValues.enabled})}

@@ -43,15 +43,26 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({
     }, 100);
   }, [registerGroup, setActiveGroup, setFocusedId]);
 
+  const playbackStateRef = useRef(playbackState);
+  const showTracksRef = useRef(showTracks);
+  
+  useEffect(() => {
+    playbackStateRef.current = playbackState;
+  }, [playbackState]);
+
+  useEffect(() => {
+    showTracksRef.current = showTracks;
+  }, [showTracks]);
+
   const resetOSDTimer = useCallback(() => {
     setShowOSD(true);
     if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
-    if (playbackState === PlaybackState.PLAYING && !showTracks) {
+    if (playbackStateRef.current === PlaybackState.PLAYING && !showTracksRef.current) {
       osdTimerRef.current = setTimeout(() => {
         setShowOSD(false);
       }, 5000); // 5s idle to hide
     }
-  }, [playbackState, showTracks]);
+  }, []);
 
   useEffect(() => {
     resetOSDTimer();
@@ -95,7 +106,8 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({
       eventBus.off('PLAYBACK_BUFFER', onBuffer);
       playbackManager.stop();
     };
-  }, [media, stream, startTimeSeconds, playbackManager, eventBus, resetOSDTimer]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media.id, stream.id, startTimeSeconds]);
 
   // If we have an error, show the error state overlay
   if (error) {

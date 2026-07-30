@@ -79,6 +79,7 @@ export class SourceManager {
       await this.cacheManager.set('sources', cacheKey, allSources, CachePolicyType.STREAM_RESOLUTIONS);
     }
 
+    console.log(`TRACE_COUNT: SourceManager: ${allSources.length}`);
     return allSources;
   }
 

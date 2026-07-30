@@ -28,16 +28,25 @@ export const FocusItem: React.FC<FocusItemProps> = ({
   const { focusedId, setFocusedId, registerFocusable, unregisterFocusable } = useSpatialFocus();
   const ref = useRef<HTMLDivElement>(null);
   
+  const onClickRef = useRef(onClick);
+  useEffect(() => {
+    onClickRef.current = onClick;
+  }, [onClick]);
+  
   const isFocused = focusedId === id;
 
   useEffect(() => {
+    console.log(`[NAV_LOG] [FocusItem MOUNT] id='${id}', groupId='${groupId}'`);
     if (ref.current) {
-      registerFocusable(id, ref.current, groupId, onClick);
+      registerFocusable(id, ref.current, groupId, () => {
+        if (onClickRef.current) onClickRef.current();
+      });
     }
     return () => {
+      console.log(`[NAV_LOG] [FocusItem UNMOUNT] id='${id}', groupId='${groupId}'`);
       unregisterFocusable(id);
     };
-  }, [id, groupId, registerFocusable, unregisterFocusable, onClick]);
+  }, [id, groupId, registerFocusable, unregisterFocusable]);
 
   useEffect(() => {
     if (autoFocus && !focusedId) {

@@ -70,6 +70,19 @@ export class SettingsManager {
     const stored = await this.storage.get<AppSettings>(SETTINGS_KEY);
     if (stored) {
       this.currentSettings = { ...DEFAULT_SETTINGS, ...stored };
+      
+      // Backward compatibility migration for TorBox API key
+      let needsSave = false;
+      if (!this.currentSettings.streams.torboxApiKey && this.currentSettings.providers?.torbox?.apiKey) {
+          this.currentSettings.streams.torboxApiKey = this.currentSettings.providers.torbox.apiKey;
+          // Delete old one so it doesn't stay around
+          delete this.currentSettings.providers.torbox.apiKey;
+          needsSave = true;
+      }
+      
+      if (needsSave) {
+          await this.save(this.currentSettings);
+      }
     } else {
       await this.save(this.currentSettings);
     }

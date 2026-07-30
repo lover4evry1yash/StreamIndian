@@ -28,6 +28,7 @@ export const TVHero: React.FC<TVHeroProps> = ({
           src={imageUrl}
           alt={title}
           className="w-full h-full object-cover"
+          crossfade={true}
         />
         {/* Gradients to blend into the background */}
         <div className="absolute inset-0 bg-gradient-to-r from-tv-bg via-tv-bg/60 to-transparent" />

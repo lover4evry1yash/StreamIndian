@@ -10,6 +10,13 @@ export class ResolutionManager {
   private logger: Logger;
   private cacheManager: CacheManager;
 
+  private diagnostics = {
+    totalResolutions: 0,
+    failures: 0,
+    cacheHits: 0,
+    totalResolveTimeMs: 0
+  };
+
   constructor(resolverManager: ResolverManager, logger: Logger, cacheManager: CacheManager) {
     this.resolverManager = resolverManager;
     this.logger = logger;
@@ -19,13 +26,16 @@ export class ResolutionManager {
   public getDiagnostics() {
     return {
       registeredResolvers: this.resolverManager.getDiagnostics(),
-      cacheHitRate: 0,
-      failures: 0,
-      averageResolveTimeMs: 0,
+      cacheHitRate: this.diagnostics.totalResolutions > 0 ? (this.diagnostics.cacheHits / this.diagnostics.totalResolutions) * 100 : 0,
+      failures: this.diagnostics.failures,
+      averageResolveTimeMs: this.diagnostics.totalResolutions > 0 ? (this.diagnostics.totalResolveTimeMs / this.diagnostics.totalResolutions) : 0,
+      totalResolutions: this.diagnostics.totalResolutions,
     };
   }
 
   public async resolve(sources: CanonicalStreamSource[]): Promise<StreamSource[]> {
+    this.diagnostics.totalResolutions++;
+    const startTime = Date.now();
     let allResolutions: StreamResolution[] = [];
 
     const promises = sources.map(async (source) => {
@@ -38,7 +48,7 @@ export class ResolutionManager {
         return [{
           id: source.id,
           title: source.title,
-          url: source.url,
+          url: source.url || '',
           quality: source.quality,
           format: source.sourceType === 'hls' ? 'HLS' : source.sourceType === 'dash' ? 'DASH' : 'MP4',
           codec: source.codec,
@@ -66,7 +76,27 @@ export class ResolutionManager {
             seeders: source.seeders,
             sources: source.magnet ? [source.magnet] : []
           };
-          return await this.resolverManager.resolveTorrent(torrentMeta);
+          
+          return [{
+            id: source.id,
+            title: source.title,
+            url: source.url || '',
+            quality: source.quality,
+            format: 'TORRENT',
+            codec: source.codec,
+            audioChannels: source.audio,
+            subtitles: source.subtitles,
+            provider: source.provider,
+            resolver: 'debrid',
+            health: source.score || 100,
+            hdr: source.hdr,
+            dolbyVision: source.dolbyVision,
+            atmos: source.atmos,
+            size: source.size,
+            seeders: source.seeders,
+            bitrate: source.bitrate
+          } as StreamResolution];
+
         }
       }
 
@@ -74,16 +104,26 @@ export class ResolutionManager {
     });
 
     const results = await Promise.allSettled(promises);
+    let failureCount = 0;
     results.forEach(r => {
       if (r.status === 'fulfilled' && r.value.length > 0) {
         allResolutions = allResolutions.concat(r.value);
+      } else if (r.status === 'rejected') {
+        failureCount++;
       }
     });
+
+    if (failureCount > 0) {
+      this.diagnostics.failures += failureCount;
+    }
+    this.diagnostics.totalResolveTimeMs += (Date.now() - startTime);
 
     // Remove duplicates
     const uniqueResolutions = this.removeDuplicates(allResolutions);
 
-    return uniqueResolutions.map(r => this.mapToStreamSource(r, sources));
+    const res = uniqueResolutions.map(r => this.mapToStreamSource(r, sources));
+    console.log(`TRACE_COUNT: ResolutionManager: ${res.length}`);
+    return res;
   }
 
   private removeDuplicates(resolutions: StreamResolution[]): StreamResolution[] {
@@ -120,7 +160,11 @@ export class ResolutionManager {
         readiness = 'DEBRID_REQUIRED';
     }
 
+    
+    const sourceInfo = sources.find(s => s.id === res.id);
     return {
+      streamSource: sourceInfo,
+
       id: res.id || `stream_${Date.now()}_${Math.random().toString(36).substring(7)}`,
       quality,
       format: tizenFormat,

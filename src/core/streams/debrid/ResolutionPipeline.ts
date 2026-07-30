@@ -44,6 +44,8 @@ export class ResolutionPipeline {
     });
 
     // 6. Rank Streams
-    return this.rankingEngine.rank(presentationModels, options);
+    const result = this.rankingEngine.rank(presentationModels, options);
+    console.log(`TRACE_COUNT: ResolutionPipeline: ${result.length}`);
+    return result;
   }
 }

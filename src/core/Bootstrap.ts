@@ -1,3 +1,6 @@
+import { IptvManager, IptvProvider } from './iptv';
+import { IdMapperService } from './metadata/IdMapperService';
+import { ExternalIdRegistry } from './providers/ExternalIdRegistry';
 import { ArtworkAggregator } from './metadata/ArtworkAggregator';
 import {
  container } from './ServiceContainer';
@@ -13,7 +16,7 @@ import {
   HlsProvider,
   DashProvider,
   TorrentSourceProvider,
-  StremioProvider,
+  GatewaySourceProvider,
   DirectResolver,
   DebridManager,
   TransferManager,
@@ -189,6 +192,12 @@ export class Bootstrap {
       const imageManager = new ImageManager(networkClient, artworkAggregator, logger);
       container.register('ImageManager', imageManager);
       
+            // 7.4.5 Initialize IPTV
+      const iptvManager = new IptvManager(networkClient, logger);
+      container.register('IptvManager', iptvManager);
+      const iptvProvider = new IptvProvider(iptvManager);
+      providerManager.register(iptvProvider, 4); // High priority for live TV
+
       // Register TMDB Provider
       const tmdbProvider = new TMDBProvider();
       providerManager.register(tmdbProvider, 3);
@@ -214,13 +223,11 @@ export class Bootstrap {
       container.register('ResolverManager', resolverManager);
 
       const sourceManager = new SourceManager(logger, cacheManager);
-      sourceManager.registerProvider(new DirectHttpProvider());
       sourceManager.registerProvider(new HlsProvider());
       sourceManager.registerProvider(new DashProvider());
       sourceManager.registerProvider(new TorrentSourceProvider());
-const stremioProvider = new StremioProvider();
-      stremioProvider.addAddonUrl('https://torrentio.strem.fun/manifest.json');
-      sourceManager.registerProvider(stremioProvider);
+const gatewayProvider = new GatewaySourceProvider(settingsManager);
+      sourceManager.registerProvider(gatewayProvider);
       await sourceManager.initializeAll();
       container.register('SourceManager', sourceManager);
 
@@ -235,6 +242,12 @@ const stremioProvider = new StremioProvider();
       debridManager.registerProvider(new EasyDebridProvider(''));
       debridManager.registerProvider(new AllDebridProvider(''));
       debridManager.registerProvider(new DebridLinkProvider(''));
+      
+      const preferredDebrid = settingsManager.getSettings().streams?.preferredDebrid;
+      if (preferredDebrid) {
+          debridManager.setPreferredProvider(preferredDebrid);
+      }
+      
       await debridManager.initializeAll(providerContext);
       container.register('DebridManager', debridManager);
 
@@ -242,6 +255,7 @@ const stremioProvider = new StremioProvider();
       container.register('TransferManager', transferManager);
 
       const streamDiscoveryService = new StreamDiscoveryService(sourceManager);
+      
       const streamResolutionService = new StreamResolutionService(resolutionManager, debridManager, transferManager);
       const streamSortingService = new StreamSortingService();
 
@@ -267,7 +281,9 @@ const stremioProvider = new StremioProvider();
         ratings: ['trakt', 'mdblist', 'tmdb'],
         collections: ['mdblist', 'tmdb']
       };
-      const metadataAggregator = new MetadataAggregator(providerManager, mergePolicy, logger);
+      const externalIdRegistry = new ExternalIdRegistry();
+      const idMapper = new IdMapperService(externalIdRegistry);
+      const metadataAggregator = new MetadataAggregator(providerManager, mergePolicy, logger, idMapper);
       container.register('MetadataAggregator', metadataAggregator);
 
       const metadataManager = new MetadataManager(metadataAggregator, metadataRepository, eventBus, logger);

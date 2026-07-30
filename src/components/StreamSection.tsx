@@ -1,22 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { MediaItem, StreamSource, PlaybackReadiness } from '../types/tizen';
+import { MediaSearchQuery } from '../core/streams/types';
 import { FocusItem } from './FocusItem';
 import { Play, Server, HardDrive, Cpu, Activity, DownloadCloud, AlertCircle } from 'lucide-react';
 import { TVBadge, TVLoading, TVButton, TVEmptyState, TVErrorState, TVCard } from '../design-system';
 import { useStreamViewModel } from '../context/ServiceContext';
+import { useSpatialFocus } from './SpatialFocusContainer';
 
 interface StreamSectionProps {
-  media: MediaItem;
+  query: MediaSearchQuery;
   onStreamSelected: (stream: StreamSource) => void;
   groupId: string;
+  pendingFocus?: boolean;
+  onFocusComplete?: () => void;
 }
 
 export const StreamSection: React.FC<StreamSectionProps> = ({
-  media,
+  query,
   onStreamSelected,
-  groupId
+  groupId,
+  pendingFocus,
+  onFocusComplete
 }) => {
   const streamViewModel = useStreamViewModel();
+  const { setFocusedId } = useSpatialFocus();
   const [state, setState] = useState(streamViewModel.state);
   const [streams, setStreams] = useState(streamViewModel.streams);
   const [discoveredSources, setDiscoveredSources] = useState(streamViewModel.discoveredSources);
@@ -27,12 +34,13 @@ export const StreamSection: React.FC<StreamSectionProps> = ({
     const handleStateChange = (payload: any) => {
       setState(payload.state);
       setStreams(payload.streams);
+      console.log('[UI:StreamSection] received canonical sources:', payload.discoveredSources.length, 'resolved streams:', payload.streams.length);
       setDiscoveredSources(payload.discoveredSources);
       setError(payload.error);
       setDebridMessage(payload.debridMessage);
     };
 
-    streamViewModel.fetchStreams(media);
+    streamViewModel.fetchStreams(query);
     const bus = (streamViewModel as any).eventBus;
     if (bus) {
         bus.on('stream:state_changed', handleStateChange);
@@ -43,7 +51,14 @@ export const StreamSection: React.FC<StreamSectionProps> = ({
             bus.off('stream:state_changed', handleStateChange);
         }
     };
-  }, [media]);
+  }, [query]);
+
+  useEffect(() => {
+    if (pendingFocus && state === 'ready' && streams.length > 0) {
+      setFocusedId('stream-0');
+      if (onFocusComplete) onFocusComplete();
+    }
+  }, [pendingFocus, state, streams, setFocusedId, onFocusComplete]);
 
   const handleStreamSelected = async (stream: StreamSource) => {
      const resolved = await streamViewModel.selectStream(stream);
@@ -67,7 +82,7 @@ export const StreamSection: React.FC<StreamSectionProps> = ({
              title="Stream Discovery Failed"
              description={error}
              actionLabel="Retry Search"
-             onAction={() => streamViewModel.fetchStreams(media)}
+             onAction={() => streamViewModel.fetchStreams(query)}
          />
       </div>
     );
@@ -81,7 +96,7 @@ export const StreamSection: React.FC<StreamSectionProps> = ({
             title="No Streams Found"
             description="We couldn't find any playable streams for this media."
             actionLabel="Search Again"
-            onAction={() => streamViewModel.fetchStreams(media)}
+            onAction={() => streamViewModel.fetchStreams(query)}
          />
       </div>
     );

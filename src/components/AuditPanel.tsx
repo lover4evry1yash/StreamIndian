@@ -9,7 +9,8 @@ import { FocusItem } from './FocusItem';
 import { ProviderTestView } from './ProviderTestView';
 import { providerManager } from '../providers';
 
-import { useAVPlayManager, useResolutionManager, useSourceManager, useDebridManager, useTransferManager } from '../context/ServiceContext';
+import { useAVPlayManager, useResolutionManager, useSourceManager, useDebridManager, useTransferManager, useImageManager } from '../context/ServiceContext';
+import { useEffect } from 'react';
 
 export const AuditPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'providers' | 'tizen' | 'legacy' | 'streams' | 'debrid' | 'images' | 'test'>('overview');
@@ -20,6 +21,25 @@ export const AuditPanel: React.FC = () => {
   const sourceManager = useSourceManager();
   const debridManager = useDebridManager();
   const transferManager = useTransferManager();
+  const imageManager = useImageManager();
+  const [gatewayStats, setGatewayStats] = useState<any>(null);
+
+  useEffect(() => {
+    if (activeTab === 'debrid' || activeTab === 'overview') {
+      fetch('/api/gateway/diagnostics')
+        .then(res => res.json())
+        .then(data => setGatewayStats(data))
+        .catch(e => console.error('Failed to fetch gateway stats:', e));
+    }
+  }, [activeTab]);
+
+  const debridProviders = debridManager.getAllProviders();
+  const debridStats = debridManager.getDiagnostics();
+  const imgStats = imageManager.getDiagnostics();
+  const imgAny = imageManager as any;
+  const imgMemEntries = imgAny.requests?.size || 0;
+  const imgQueueLen = imgAny.queue?.length || 0;
+
   const isAVPlayAvailable = avplayManager.isAVPlayAvailable();
 
   const auditChecks = [
@@ -144,18 +164,23 @@ export const AuditPanel: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 p-4 rounded-xl">
                  <h4 className="text-sm text-indigo-400 font-bold mb-2">Memory Cache Entries</h4>
-                 <div className="text-2xl font-black">124</div>
+                 <div className="text-2xl font-black">{imgMemEntries}</div>
                  <div className="text-xs text-zinc-400 mt-1">Images currently in memory</div>
               </div>
               <div className="bg-white/5 p-4 rounded-xl">
-                 <h4 className="text-sm text-indigo-400 font-bold mb-2">Prefetched Images</h4>
-                 <div className="text-2xl font-black">45</div>
-                 <div className="text-xs text-zinc-400 mt-1">Anticipated view requirements</div>
+                 <h4 className="text-sm text-indigo-400 font-bold mb-2">Cache Hits / Misses</h4>
+                 <div className="text-2xl font-black">{imgStats.cacheHits} / {imgStats.cacheMisses}</div>
+                 <div className="text-xs text-zinc-400 mt-1">Prefetched / On-demand</div>
               </div>
               <div className="bg-white/5 p-4 rounded-xl">
                  <h4 className="text-sm text-indigo-400 font-bold mb-2">Queue Length</h4>
-                 <div className="text-2xl font-black">0</div>
+                 <div className="text-2xl font-black">{imgQueueLen}</div>
                  <div className="text-xs text-zinc-400 mt-1">Pending image loads</div>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl">
+                 <h4 className="text-sm text-indigo-400 font-bold mb-2">Completed Loads</h4>
+                 <div className="text-2xl font-black">{imgStats.completedLoads}</div>
+                 <div className="text-xs text-zinc-400 mt-1">Avg latency: {imgStats.averageLatencyMs}ms</div>
               </div>
               <div className="bg-white/5 p-4 rounded-xl">
                  <h4 className="text-sm text-emerald-400 font-bold mb-2">Primary Artwork Provider</h4>
@@ -231,40 +256,43 @@ export const AuditPanel: React.FC = () => {
               <Layers className="w-5 h-5" /> Registered Debrid Providers
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              {['torbox', 'realdebrid', 'premiumize', 'easydebrid', 'alldebrid', 'debridlink'].map((id) => (
-                <div key={id} className="bg-black/40 p-4 rounded-xl border border-white/10 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-white text-sm uppercase">{id}</h4>
-                    <p className="text-xs text-zinc-400">Health: 100% • Latency: 45ms</p>
+              {debridProviders.map((p) => {
+                const health = debridStats[p.id]?.health;
+                return (
+                  <div key={p.id} className="bg-black/40 p-4 rounded-xl border border-white/10 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-white text-sm uppercase">{p.name}</h4>
+                      <p className="text-xs text-zinc-400">Health: {health?.reliability || 0}% • Latency: {health?.latencyMs || 0}ms</p>
+                    </div>
+                    <span className={`px-2.5 py-1 ${health?.isAvailable ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'} rounded text-xs font-bold`}>
+                      {health?.isAvailable ? 'Active' : 'Offline'}
+                    </span>
                   </div>
-                  <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">
-                    Active
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-3">
             <h3 className="font-bold text-base text-indigo-400 flex items-center gap-2">
-              <Terminal className="w-5 h-5" /> Debrid & Transfer System Statistics
+              <Terminal className="w-5 h-5" /> Debrid & Gateway System Statistics
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div className="bg-black/40 p-4 rounded-xl border border-white/10">
-                <div className="text-2xl font-black text-indigo-400">6</div>
+                <div className="text-2xl font-black text-indigo-400">{debridProviders.length}</div>
                 <div className="text-xs text-zinc-400 mt-1">Debrid Providers</div>
               </div>
               <div className="bg-black/40 p-4 rounded-xl border border-white/10">
-                <div className="text-2xl font-black text-emerald-400">98.5%</div>
-                <div className="text-xs text-zinc-400 mt-1">Cache Hit Rate</div>
+                <div className="text-2xl font-black text-emerald-400">{gatewayStats ? Math.round((gatewayStats.cache?.hits / (gatewayStats.cache?.hits + gatewayStats.cache?.misses || 1)) * 100) : 0}%</div>
+                <div className="text-xs text-zinc-400 mt-1">Gateway Cache Hit Rate</div>
               </div>
               <div className="bg-black/40 p-4 rounded-xl border border-white/10">
-                <div className="text-2xl font-black text-purple-400">0</div>
-                <div className="text-xs text-zinc-400 mt-1">Active Transfers</div>
+                <div className="text-2xl font-black text-purple-400">{gatewayStats?.cache?.size || 0}</div>
+                <div className="text-xs text-zinc-400 mt-1">Gateway Cache Size</div>
               </div>
               <div className="bg-black/40 p-4 rounded-xl border border-white/10">
-                <div className="text-2xl font-black text-amber-400">~148 MB</div>
-                <div className="text-xs text-zinc-400 mt-1">Tizen Memory Usage</div>
+                <div className="text-2xl font-black text-amber-400">{Object.keys(gatewayStats?.providers || {}).length}</div>
+                <div className="text-xs text-zinc-400 mt-1">Gateway Source Providers</div>
               </div>
             </div>
           </div>

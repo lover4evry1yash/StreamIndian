@@ -12,10 +12,13 @@ export default defineConfig(() => {
       },
     },
     build: {
+      target: 'chrome69',
       rollupOptions: {
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-db': ['dexie'],
             'core': [
               './src/core/ServiceContainer.ts',
               './src/core/EventBus.ts',
@@ -37,6 +40,7 @@ export default defineConfig(() => {
               './src/providers/index.ts',
               './src/providers/indianMediaCatalog.ts'
             ],
+            'iptv': ['./src/components/IPTVView.tsx', './src/core/iptv/IptvManager.ts'],
             'search': ['./src/components/SearchView.tsx'],
             'details': ['./src/components/UniversalMediaDetailView.tsx'],
             'player': ['./src/components/TVPlayer.tsx'],

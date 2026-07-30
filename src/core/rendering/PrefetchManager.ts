@@ -13,6 +13,7 @@ export class PrefetchManager {
   
   private prefetchQueue: string[] = [];
   private isProcessing = false;
+  private activePrefetches: Set<string> = new Set();
 
   constructor(
     metadataManager: MetadataManager, 
@@ -33,7 +34,7 @@ export class PrefetchManager {
     
     const extractMediaInfo = (nodeId: string): { type: 'movie'|'series'|'anime', id: string } | null => {
       // Expecting something like rowId-media-movie-1234 or media-movie-1234
-      const match = nodeId.match(/media-(movie|series|anime)-(.*)$/);
+      const match = nodeId.match(/media-(movie|series|anime)-(.*?)(?:-\d+)?$/);
       if (match) {
         return { type: match[1] as 'movie'|'series'|'anime', id: match[2] };
       }
@@ -70,7 +71,7 @@ export class PrefetchManager {
 
   public queuePrefetch(type: 'movie' | 'series' | 'anime', id: string, highPriority: boolean = false) {
     const key = `${type}:${id}`;
-    if (!this.prefetchQueue.includes(key)) {
+    if (!this.prefetchQueue.includes(key) && !this.activePrefetches.has(key)) {
       if (highPriority) {
         this.prefetchQueue.unshift(key); // Put at start of queue
       } else {
@@ -89,6 +90,7 @@ export class PrefetchManager {
       if (!key) continue;
       
       const [type, id] = key.split(':');
+      this.activePrefetches.add(key);
       try {
         if (type === 'movie' || type === 'series') {
            await this.metadataManager.prefetch(type, id);
@@ -98,6 +100,8 @@ export class PrefetchManager {
         }
       } catch (err) {
         this.logger.warn(`Failed to prefetch ${key}`, err);
+      } finally {
+        this.activePrefetches.delete(key);
       }
       
       await new Promise(resolve => setTimeout(resolve, 50)); 

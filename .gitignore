@@ -23,3 +23,8 @@ Thumbs.db
 *.log
 *.out
 
+scripts/fixes/
+scripts/patches/
+scripts/utilities/
+.git-corrupted
+StreamIndian-Recovery.tar.gz

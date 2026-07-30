@@ -100,6 +100,17 @@ export const SettingsView: React.FC = () => {
         </div>
       </section>
 
+      {/* Provider Configurations */}
+      <section className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
+        <div className="flex items-center gap-2 font-bold text-sm text-indigo-400">
+          <Sparkles className="w-4 h-4" /> Integrations & API Keys
+        </div>
+        <p className="text-xs text-zinc-400">
+          Configure API keys for metadata providers, Debrid services, and content aggregators.
+        </p>
+        <SettingsProvidersView />
+      </section>
+
       {/* Compliance & Security */}
       <section className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-3">
         <div className="flex items-center gap-2 font-bold text-sm text-emerald-400">

@@ -33,3 +33,4 @@ export class ServiceContainer {
 
 // Convenience export for the singleton
 export const container = ServiceContainer.getInstance();
+(window as any).appContainer = container;

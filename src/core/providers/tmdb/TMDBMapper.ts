@@ -35,6 +35,7 @@ export class TMDBMapper {
       videos: this.mapVideos(data.videos?.results),
       ratings: [{ provider: 'tmdb', score: data.vote_average, votes: data.vote_count }],
       credits: this.mapCredits(data.credits),
+      externalIds: this.mapExternalIds(data.external_ids),
       collection: data.belongs_to_collection ? this.mapCollection(data.belongs_to_collection) as Collection : undefined,
     };
   }
@@ -54,6 +55,7 @@ export class TMDBMapper {
       videos: this.mapVideos(data.videos?.results),
       ratings: [{ provider: 'tmdb', score: data.vote_average, votes: data.vote_count }],
       credits: this.mapCredits(data.credits),
+      externalIds: this.mapExternalIds(data.external_ids),
       seasonsCount: data.number_of_seasons,
       episodesCount: data.number_of_episodes,
     };
@@ -93,6 +95,16 @@ export class TMDBMapper {
       name: data.name,
       posterImage: this.getImageUrl(data.poster_path) || undefined,
       backdropImage: this.getImageUrl(data.backdrop_path) || undefined,
+    };
+  }
+
+
+  private mapExternalIds(externalIds?: any): ExternalIds {
+    if (!externalIds) return {};
+    return {
+      tmdbId: externalIds.tmdb_id ? String(externalIds.tmdb_id) : undefined,
+      imdbId: externalIds.imdb_id ? String(externalIds.imdb_id) : undefined,
+      tvdbId: externalIds.tvdb_id ? String(externalIds.tvdb_id) : undefined,
     };
   }
 

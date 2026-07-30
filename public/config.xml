@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="http://streamindian.tv/StreamIndian" version="1.0.0" viewmodes="maximized">
-    <access origin="*" subdomains="true"/>
-    <tizen:application id="StreamIndian.StreamIndian" package="StreamIndian" required_version="6.0"/>
+<widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="http://yourdomain/StreamIndian" version="1.0.0" viewmodes="fullscreen">
+    <tizen:application id="9WwEmaC3j7.StreamIndian" package="9WwEmaC3j7" required_version="5.0"/>
     <content src="index.html"/>
     <feature name="http://tizen.org/feature/screen.size.all"/>
     <icon src="icon.png"/>
     <name>StreamIndian</name>
-    <tizen:privilege name="http://tizen.org/privilege/tv.window"/>
-    <tizen:privilege name="http://tizen.org/privilege/download"/>
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
-    <tizen:privilege name="http://tizen.org/privilege/mediastorage"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
-    <tizen:setting hwkey-event="enable"/>
-    <tizen:setting screen-orientation="landscape"/>
+    <tizen:profile name="tv"/>
+    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+    <access origin="*" subdomains="true"/>
 </widget>

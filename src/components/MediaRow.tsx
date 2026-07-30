@@ -38,38 +38,11 @@ export const MediaRow: React.FC<MediaRowProps> = ({
     };
   }, [items, playbackManager]);
 
-  // Virtualization logic
-  const renderWindow = useMemo(() => {
-     let activeIndex = 0;
-     if (focusedId && focusedId.startsWith(`${rowId}-media-`)) {
-        const parts = focusedId.split('-');
-        const idxStr = parts[parts.length - 1];
-        if (!isNaN(Number(idxStr))) {
-           activeIndex = parseInt(idxStr, 10);
-        }
-     }
-     
-     // Only render a window of 8 items before and 12 items after the focused index
-     const start = Math.max(0, activeIndex - 8);
-     const end = Math.min(items.length, activeIndex + 12);
-     
-     return { start, end };
-  }, [focusedId, rowId, items.length]);
-
   if (!items || items.length === 0) return null;
-
-  // Assuming item width 220px + 16px gap = 236px for spacer calculation on md
-  // To avoid responsive issues, we'll just apply margin-left to the first visible item
-  const marginLeft = renderWindow.start * 236; // rough estimate
 
   return (
     <TVRow title={title}>
-      {renderWindow.start > 0 && (
-         <div style={{ width: `${marginLeft}px`, flexShrink: 0 }} />
-      )}
-      
-      {items.slice(renderWindow.start, renderWindow.end).map((media, indexOffset) => {
-        const index = renderWindow.start + indexOffset;
+      {items.map((media, index) => {
         const cardId = `${rowId}-media-${media.mediaType}-${media.id}-${index}`;
         const totalDurationSeconds = (media.durationMinutes || 120) * 60;
         const progressPercent = Math.min(100, Math.round(((progressMap[media.id] || 0) / totalDurationSeconds) * 100));
@@ -93,10 +66,6 @@ export const MediaRow: React.FC<MediaRowProps> = ({
           </div>
         );
       })}
-      
-      {renderWindow.end < items.length && (
-         <div style={{ width: `${(items.length - renderWindow.end) * 236}px`, flexShrink: 0 }} />
-      )}
     </TVRow>
   );
 };

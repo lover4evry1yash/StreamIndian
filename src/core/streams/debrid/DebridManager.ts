@@ -1,3 +1,4 @@
+import { ProviderContext } from "../../providers/types";
 import { EventBus } from '../../EventBus';
 import { Logger } from '../../Logger';
 import { IDebridProvider, TransferResult, TransferStatus, DebridDiagnostics } from './types';
@@ -38,7 +39,7 @@ export class DebridManager {
     }
   }
 
-  public async initializeAll(context?: any): Promise<void> {
+  public async initializeAll(context: ProviderContext): Promise<void> {
     const initPromises = this.getAllProviders().map(async (provider) => {
       try {
         await provider.initialize(context);
@@ -78,12 +79,12 @@ export class DebridManager {
     return matrix;
   }
 
-  public async resolve(infoHash: string, providerId?: string): Promise<{ url: string | null; providerId: string | null }> {
+  public async resolve(infoHash: string, providerId?: string, fileIndex?: number): Promise<{ url: string | null; providerId: string | null }> {
     const providersToTry = this.getPrioritizedProviders(providerId);
 
     for (const provider of providersToTry) {
       try {
-        const url = await provider.resolve(infoHash);
+        const url = await provider.resolve(infoHash, fileIndex);
         if (url) {
           return { url, providerId: provider.id };
         }

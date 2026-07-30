@@ -11,6 +11,7 @@ export class ValidationLayer {
     
     return {
       id: String(movie.id),
+      mediaType: 'movie',
       title: String(movie.title).trim(),
       originalTitle: movie.originalTitle,
       overview: movie.overview || '',
@@ -34,6 +35,7 @@ export class ValidationLayer {
     
     return {
       id: String(series.id),
+      mediaType: 'series',
       title: String(series.title).trim(),
       originalTitle: series.originalTitle,
       overview: series.overview || '',

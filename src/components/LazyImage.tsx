@@ -8,6 +8,7 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackSrc?: string;
   placeholder?: React.ReactNode;
   priority?: 'high' | 'medium' | 'low';
+  crossfade?: boolean;
 }
 
 export const LazyImage: React.FC<LazyImageProps> = ({ 
@@ -17,9 +18,11 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   className = '',
   alt = '',
   priority = 'low' as 'high' | 'medium' | 'low',
+  crossfade = false,
   ...props 
 }) => {
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const [prevLoadedSrc, setPrevLoadedSrc] = useState<string | null>(null);
   const [error, setError] = useState<boolean>(false);
   const startTime = useRef<number>(Date.now());
   const imageManager = useImageManager();
@@ -38,10 +41,11 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
 
     if (imageManager) {
+      const loadPromise = imageManager.preloadImage(src, priority);
       if (typeof imageManager.registerDisplay === 'function') {
         imageManager.registerDisplay(src);
       }
-      imageManager.preloadImage(src, priority).then(resolvedSrc => {
+      loadPromise.then(resolvedSrc => {
         if (!isMounted) return;
         
         if (resolvedSrc) {
@@ -72,7 +76,20 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         imageManager.unregisterDisplay(src);
       }
     };
-  }, [src, priority, imageManager]);
+  }, [src, imageManager, crossfade]);
+
+  // Handle priority promotion without unmounting
+  useEffect(() => {
+    let isMounted = true;
+    if (imageManager && src && priority === 'high') {
+      imageManager.preloadImage(src, priority).then(resolvedSrc => {
+        if (isMounted && resolvedSrc) {
+           setLoadedSrc(resolvedSrc);
+        }
+      });
+    }
+    return () => { isMounted = false; };
+  }, [priority, src, imageManager]);
 
   if (error) {
     if (fallbackSrc) {
@@ -85,7 +102,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     );
   }
 
-  if (!loadedSrc) {
+  if (!loadedSrc && !prevLoadedSrc) {
     return placeholder ? (
       <>{placeholder}</>
     ) : (
@@ -94,11 +111,23 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   }
 
   return (
-    <img 
-      src={loadedSrc} 
-      alt={alt} 
-      className={`transition-opacity duration-300 opacity-100 ${className}`} 
-      {...props} 
-    />
+    <>
+      {prevLoadedSrc && prevLoadedSrc !== loadedSrc && (
+        <img 
+          src={prevLoadedSrc} 
+          alt={alt} 
+          className={`absolute inset-0 transition-opacity duration-[800ms] opacity-0 ${className}`} 
+          {...props} 
+        />
+      )}
+      {loadedSrc && (
+        <img 
+          src={loadedSrc} 
+          alt={alt} 
+          className={`transition-opacity duration-[800ms] opacity-100 ${className}`} 
+          {...props} 
+        />
+      )}
+    </>
   );
 };

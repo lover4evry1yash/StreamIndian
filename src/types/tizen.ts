@@ -4,7 +4,9 @@
 
 export interface MediaItem {
   id: string;
-  mediaType: 'movie' | 'series' | 'anime';
+  mediaType: 'movie' | 'series' | 'anime' | 'episode';
+  seasonNumber?: number;
+  episodeNumber?: number;
   title: string;
   originalTitle?: string;
   language: 'Hindi' | 'Tamil' | 'Telugu' | 'Malayalam' | 'Kannada' | 'Bengali' | 'Marathi' | 'Punjabi' | 'Gujarati' | 'English';
@@ -79,6 +81,7 @@ export interface StreamSource {
   dolbyVision?: boolean;
   atmos?: boolean;
   cacheStatus?: Record<string, boolean>;
+  streamSource?: any;
 
 }
 
@@ -137,4 +140,5 @@ export interface AVPlayPlaybackInfo {
   bufferingPercentage: number;
   volume: number;
   isMuted: boolean;
+  errorDetails?: any;
 }

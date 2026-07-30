@@ -4,7 +4,7 @@ export interface IDebridProvider extends IProvider {
   checkCache(infoHashes: string[]): Promise<Record<string, boolean>>;
   createTransfer(infoHash: string, magnet?: string): Promise<TransferResult>;
   pollTransfer(transferId: string): Promise<TransferStatus>;
-  resolve(infoHash: string): Promise<string | null>;
+  resolve(infoHash: string, fileIndex?: number): Promise<string | null>;
   cancel(transferId: string): Promise<boolean>;
   
   getLimits(): DebridLimits;

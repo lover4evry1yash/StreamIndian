@@ -54,7 +54,7 @@ export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearc
     try {
       const cleanId = id.replace(/^tmdb_/, '').replace(/^ind_/, '');
       const data = await this.client.get<any>(`/movie/${cleanId}`, {
-        append_to_response: 'videos,credits'
+        append_to_response: 'videos,credits,external_ids'
       });
       return this.mapper.mapMovie(data) as Movie; // Validation happens in MetadataManager
     } catch (err: any) {
@@ -67,7 +67,7 @@ export class TMDBProvider implements IMetadataProvider, IArtworkProvider, ISearc
     try {
       const cleanId = id.replace(/^tmdb_/, '').replace(/^ind_/, '');
       const data = await this.client.get<any>(`/tv/${cleanId}`, {
-        append_to_response: 'videos,credits'
+        append_to_response: 'videos,credits,external_ids'
       });
       return this.mapper.mapSeries(data) as Series;
     } catch (err: any) {

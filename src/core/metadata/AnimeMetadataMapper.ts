@@ -2,7 +2,7 @@ import { Anime } from '../models/DomainModels';
 
 export class AnimeMetadataMapper {
   // Converts provider-specific anime models to Canonical Anime Model
-  public mapAniListToAnime(data: any): Partial<Anime> {
+  public mapAniListToAnime(data: Record<string, any>): Partial<Anime> {
     return {
       id: data.id,
       romajiTitle: data.title?.romaji,
