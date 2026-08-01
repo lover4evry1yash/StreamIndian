@@ -1,9 +1,9 @@
+
 import { IptvManager, IptvProvider } from './iptv';
 import { IdMapperService } from './metadata/IdMapperService';
 import { ExternalIdRegistry } from './providers/ExternalIdRegistry';
 import { ArtworkAggregator } from './metadata/ArtworkAggregator';
-import {
- container } from './ServiceContainer';
+import { container } from './ServiceContainer';
 import {
   ResolutionManager,
   ResolverManager,
@@ -39,11 +39,11 @@ import { SearchService } from './services/SearchService';
 import { SearchViewModel } from './search/SearchViewModel';
 import { HomeCatalogService } from './services/HomeCatalogService';
 import { HomeViewModel } from './home/HomeViewModel';
+import { WatchlistViewModel } from './watchlist/WatchlistViewModel';
 import { Config } from './Config';
 import { DeviceCapabilities } from './DeviceCapabilities';
 import { NetworkClient } from './NetworkClient';
 import { AppLifecycle } from './AppLifecycle';
-
 import { NavigationManager } from './navigation';
 import { PlaybackManager } from './playback';
 import { AVPlayManager } from './avplay';
@@ -78,7 +78,6 @@ import {
   MediaDetailsManager,
   MediaDetailsViewModel
 } from './details';
-
 import {
   SearchRepository,
   SearchManager
@@ -93,7 +92,14 @@ import {
 } from './storage';
 
 export class Bootstrap {
-  public static async init(): Promise<void> {
+  private static phase1Time: number = 0;
+  private static phase2Time: number = 0;
+  private static initFlags = new Set<string>();
+
+  public static async initializeCritical(): Promise<void> {
+    if (this.initFlags.has('critical')) return;
+    this.initFlags.add('critical');
+    const start = performance.now();
     try {
       // 1. Initialize core utilities first
       const config = new Config();
@@ -105,8 +111,7 @@ export class Bootstrap {
       } else {
         logger.setLevel(LogLevel.DEBUG);
       }
-
-      logger.info('Starting bootstrap sequence...');
+      logger.info('Starting critical bootstrap sequence...');
 
       // 2. Register basic services
       container.register('Config', config);
@@ -136,17 +141,12 @@ export class Bootstrap {
 
       const metadataCache = new MetadataCache(cacheManager);
       container.register('MetadataCache', metadataCache);
-
-
       const imageCache = new ImageCache(cacheManager);
       container.register('ImageCache', imageCache);
       
       const renderMetrics = new RenderMetrics(logger);
       container.register('RenderMetrics', renderMetrics);
-      
-      
-
-
+            
       // 4. Initialize App Lifecycle
       const lifecycle = new AppLifecycle(eventBus, logger, device);
       container.register('AppLifecycle', lifecycle);
@@ -163,9 +163,6 @@ export class Bootstrap {
       const playbackManager = new PlaybackManager(eventBus, logger, cacheManager, avplayManager);
       container.register('PlaybackManager', playbackManager);
       
-      const playerOverlayViewModel = new PlayerOverlayViewModel(playbackManager);
-      container.register('PlayerOverlayViewModel', playerOverlayViewModel);
-
       // 7. Initialize Providers
       const providerContext: ProviderContext = {
         settingsManager,
@@ -176,6 +173,7 @@ export class Bootstrap {
         config,
         eventBus,
       };
+      container.register('ProviderContext', providerContext);
 
       const providerRegistry = new ProviderRegistry(logger);
       container.register('ProviderRegistry', providerRegistry);
@@ -191,82 +189,17 @@ export class Bootstrap {
 
       const imageManager = new ImageManager(networkClient, artworkAggregator, logger);
       container.register('ImageManager', imageManager);
-      
-            // 7.4.5 Initialize IPTV
-      const iptvManager = new IptvManager(networkClient, logger);
-      container.register('IptvManager', iptvManager);
-      const iptvProvider = new IptvProvider(iptvManager);
-      providerManager.register(iptvProvider, 4); // High priority for live TV
-
+            
       // Register TMDB Provider
       const tmdbProvider = new TMDBProvider();
       providerManager.register(tmdbProvider, 3);
-
       providerManager.register(new TVDBProvider(), 2);
       providerManager.register(new AniListProvider(), 2);
       providerManager.register(new FanartProvider(), 2);
       providerManager.register(new RPDBProvider(), 2);
       providerManager.register(new MDBListProvider(), 2);
       providerManager.register(new TraktProvider(), 2);
-
-
       await providerManager.initializeAll();
-
-      // 7.5 Initialize Stream Ecosystem
-      const resolverManager = new ResolverManager(logger);
-      resolverManager.registerResolver(new DirectResolver());
-      resolverManager.registerResolver(new TorBoxResolver(''));
-      resolverManager.registerResolver(new RealDebridResolver(''));
-      resolverManager.registerResolver(new PremiumizeResolver(''));
-      resolverManager.registerResolver(new EasyDebridResolver(''));
-      await resolverManager.initializeAll(providerContext);
-      container.register('ResolverManager', resolverManager);
-
-      const sourceManager = new SourceManager(logger, cacheManager);
-      sourceManager.registerProvider(new HlsProvider());
-      sourceManager.registerProvider(new DashProvider());
-      sourceManager.registerProvider(new TorrentSourceProvider());
-const gatewayProvider = new GatewaySourceProvider(settingsManager);
-      sourceManager.registerProvider(gatewayProvider);
-      await sourceManager.initializeAll();
-      container.register('SourceManager', sourceManager);
-
-      const resolutionManager = new ResolutionManager(resolverManager, logger, cacheManager);
-      container.register('ResolutionManager', resolutionManager);
-
-      // Debrid Orchestration & Transfer Engine
-      const debridManager = new DebridManager(eventBus, logger);
-      debridManager.registerProvider(new TorBoxDebridProvider(''));
-      debridManager.registerProvider(new RealDebridProvider(''));
-      debridManager.registerProvider(new PremiumizeDebridProvider(''));
-      debridManager.registerProvider(new EasyDebridProvider(''));
-      debridManager.registerProvider(new AllDebridProvider(''));
-      debridManager.registerProvider(new DebridLinkProvider(''));
-      
-      const preferredDebrid = settingsManager.getSettings().streams?.preferredDebrid;
-      if (preferredDebrid) {
-          debridManager.setPreferredProvider(preferredDebrid);
-      }
-      
-      await debridManager.initializeAll(providerContext);
-      container.register('DebridManager', debridManager);
-
-      const transferManager = new TransferManager(eventBus, logger, debridManager);
-      container.register('TransferManager', transferManager);
-
-      const streamDiscoveryService = new StreamDiscoveryService(sourceManager);
-      
-      const streamResolutionService = new StreamResolutionService(resolutionManager, debridManager, transferManager);
-      const streamSortingService = new StreamSortingService();
-
-      const streamViewModel = new StreamViewModel(
-         eventBus,
-         streamDiscoveryService,
-         streamResolutionService,
-         streamSortingService,
-         settingsManager
-      );
-      container.register('StreamViewModel', streamViewModel);
 
       // 8. Initialize Metadata Engine
       const metadataRepository = new MetadataRepository(cacheManager);
@@ -281,8 +214,10 @@ const gatewayProvider = new GatewaySourceProvider(settingsManager);
         ratings: ['trakt', 'mdblist', 'tmdb'],
         collections: ['mdblist', 'tmdb']
       };
+
       const externalIdRegistry = new ExternalIdRegistry();
       const idMapper = new IdMapperService(externalIdRegistry);
+
       const metadataAggregator = new MetadataAggregator(providerManager, mergePolicy, logger, idMapper);
       container.register('MetadataAggregator', metadataAggregator);
 
@@ -295,50 +230,177 @@ const gatewayProvider = new GatewaySourceProvider(settingsManager);
       const homeViewModel = new HomeViewModel(homeCatalogService, logger);
       container.register('HomeViewModel', homeViewModel);
 
+      this.phase1Time = performance.now() - start;
+      if (((typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ? false : (import.meta as any).env?.DEV)) {
+        logger.info(`[Bootstrap] Phase 1 (Critical) completed in ${this.phase1Time.toFixed(2)}ms`);
+      }
+    } catch (error) {
+      console.error('[Bootstrap] Critical failure during Phase 1 initialization:', error);
+      throw error;
+    }
+  }
 
-      // 10. Initialize Details Engine
-      const artworkSelector = new ArtworkSelector();
-      container.register('ArtworkSelector', artworkSelector);
+  public static async initializeIdle(): Promise<void> {
+    if (this.initFlags.has('idle')) return;
+    this.initFlags.add('idle');
+    const start = performance.now();
+    try {
+      const logger = container.resolve<Logger>('Logger');
+      logger.info('Starting idle bootstrap sequence...');
 
-      const mediaDetailsRepository = new MediaDetailsRepository(metadataRepository);
-      const mediaSectionBuilder = new MediaSectionBuilder();
-      const mediaActionResolver = new MediaActionResolver();
-      const detailService = new DetailService(metadataManager, logger);
-      container.register('DetailService', detailService);
-      const mediaDetailsManager = new MediaDetailsManager(
-        detailService,
-        mediaDetailsRepository,
-        mediaSectionBuilder,
-        mediaActionResolver,
-        eventBus,
-        logger
-      );
-      const mediaDetailsViewModel = new MediaDetailsViewModel(mediaDetailsManager, mediaDetailsRepository, artworkSelector);
-
-      container.register('MediaDetailsManager', mediaDetailsManager);
-      container.register('MediaDetailsViewModel', mediaDetailsViewModel);
-
+      const metadataManager = container.resolve<MetadataManager>('MetadataManager');
+      const imageManager = container.resolve<ImageManager>('ImageManager');
+      const eventBus = container.resolve<EventBus>('EventBus');
 
       const prefetchManager = new PrefetchManager(metadataManager, imageManager, eventBus, logger);
       container.register('PrefetchManager', prefetchManager);
 
-      // 9. Initialize Search Engine
-
-      const searchRepository = new SearchRepository(cacheManager);
-      container.register('SearchRepository', searchRepository);
-
-      const searchManager = new SearchManager(providerManager, searchRepository, eventBus, logger, config);
-      container.register('SearchManager', searchManager);
-
-      const searchService = new SearchService(searchManager, logger);
-      container.register('SearchService', searchService);
-
-      const searchViewModel = new SearchViewModel(searchService, logger);
-      container.register('SearchViewModel', searchViewModel);
-
-      logger.info('Bootstrap sequence completed successfully.');
+      this.phase2Time = performance.now() - start;
+      if (((typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ? false : (import.meta as any).env?.DEV)) {
+        logger.info(`[Bootstrap] Phase 2 (Idle) completed in ${this.phase2Time.toFixed(2)}ms`);
+        logger.info(`[Bootstrap] Total Startup Time: ${(this.phase1Time + this.phase2Time).toFixed(2)}ms`);
+      }
     } catch (error) {
-      console.error('[Bootstrap] Critical failure during initialization:', error);
+      const logger = container.resolve<Logger>('Logger');
+      logger.error('[Bootstrap] Failure during Phase 2 initialization:', error);
+    }
+  }
+
+  public static async initializeOnDemand(feature: 'search' | 'details' | 'playback' | 'iptv' | 'stream' | 'watchlist'): Promise<void> {
+    if (this.initFlags.has(`ondemand-${feature}`)) return;
+    this.initFlags.add(`ondemand-${feature}`);
+    const start = performance.now();
+    
+    try {
+      const logger = container.resolve<Logger>('Logger');
+      logger.info(`Initializing on-demand feature: ${feature}`);
+      
+      const eventBus = container.resolve<EventBus>('EventBus');
+      const cacheManager = container.resolve<CacheManager>('CacheManager');
+      const providerManager = container.resolve<ProviderManager>('ProviderManager');
+      const providerContext = container.resolve<ProviderContext>('ProviderContext');
+      const config = container.resolve<Config>('Config');
+      const settingsManager = container.resolve<SettingsManager>('SettingsManager');
+      const networkClient = container.resolve<NetworkClient>('NetworkClient');
+
+      if (feature === 'search') {
+        const searchRepository = new SearchRepository(cacheManager);
+        container.register('SearchRepository', searchRepository);
+        const searchManager = new SearchManager(providerManager, searchRepository, eventBus, logger, config);
+        container.register('SearchManager', searchManager);
+        const searchService = new SearchService(searchManager, logger);
+        container.register('SearchService', searchService);
+        const searchViewModel = new SearchViewModel(searchService, logger);
+        container.register('SearchViewModel', searchViewModel);
+      } 
+      else if (feature === 'details') {
+        const metadataManager = container.resolve<MetadataManager>('MetadataManager');
+        const metadataRepository = container.resolve<MetadataRepository>('MetadataRepository');
+
+        const artworkSelector = new ArtworkSelector();
+        container.register('ArtworkSelector', artworkSelector);
+        
+        const mediaDetailsRepository = new MediaDetailsRepository(metadataRepository);
+        const mediaSectionBuilder = new MediaSectionBuilder();
+        const mediaActionResolver = new MediaActionResolver();
+        
+        const detailService = new DetailService(metadataManager, logger);
+        container.register('DetailService', detailService);
+        
+        const mediaDetailsManager = new MediaDetailsManager(
+          detailService,
+          mediaDetailsRepository,
+          mediaSectionBuilder,
+          mediaActionResolver,
+          eventBus,
+          logger
+        );
+        const mediaDetailsViewModel = new MediaDetailsViewModel(mediaDetailsManager, mediaDetailsRepository, artworkSelector);
+        container.register('MediaDetailsManager', mediaDetailsManager);
+        container.register('MediaDetailsViewModel', mediaDetailsViewModel);
+
+        // Details view also needs Stream ecosystem
+        await this.initializeOnDemand('stream');
+      }
+      else if (feature === 'stream') {
+        const resolverManager = new ResolverManager(logger);
+        resolverManager.registerResolver(new DirectResolver());
+        resolverManager.registerResolver(new TorBoxResolver(''));
+        resolverManager.registerResolver(new RealDebridResolver(''));
+        resolverManager.registerResolver(new PremiumizeResolver(''));
+        resolverManager.registerResolver(new EasyDebridResolver(''));
+        await resolverManager.initializeAll(providerContext);
+        container.register('ResolverManager', resolverManager);
+
+        const sourceManager = new SourceManager(logger, cacheManager);
+        sourceManager.registerProvider(new HlsProvider());
+        sourceManager.registerProvider(new DashProvider());
+        sourceManager.registerProvider(new TorrentSourceProvider());
+        const gatewayProvider = new GatewaySourceProvider(settingsManager);
+        sourceManager.registerProvider(gatewayProvider);
+        await sourceManager.initializeAll();
+        container.register('SourceManager', sourceManager);
+
+        const resolutionManager = new ResolutionManager(resolverManager, logger, cacheManager);
+        container.register('ResolutionManager', resolutionManager);
+
+        const debridManager = new DebridManager(eventBus, logger);
+        debridManager.registerProvider(new TorBoxDebridProvider(''));
+        debridManager.registerProvider(new RealDebridProvider(''));
+        debridManager.registerProvider(new PremiumizeDebridProvider(''));
+        debridManager.registerProvider(new EasyDebridProvider(''));
+        debridManager.registerProvider(new AllDebridProvider(''));
+        debridManager.registerProvider(new DebridLinkProvider(''));
+        
+        const preferredDebrid = settingsManager.getSettings().streams?.preferredDebrid;
+        if (preferredDebrid) {
+            debridManager.setPreferredProvider(preferredDebrid);
+        }
+        await debridManager.initializeAll(providerContext);
+        container.register('DebridManager', debridManager);
+
+        const transferManager = new TransferManager(eventBus, logger, debridManager);
+        container.register('TransferManager', transferManager);
+
+        const streamDiscoveryService = new StreamDiscoveryService(sourceManager);
+        const streamResolutionService = new StreamResolutionService(resolutionManager, debridManager, transferManager);
+        const streamSortingService = new StreamSortingService();
+        const streamViewModel = new StreamViewModel(
+           eventBus,
+           streamDiscoveryService,
+           streamResolutionService,
+           streamSortingService,
+           settingsManager
+        );
+        container.register('StreamViewModel', streamViewModel);
+      }
+      else if (feature === 'playback') {
+        const playbackManager = container.resolve<PlaybackManager>('PlaybackManager');
+        const playerOverlayViewModel = new PlayerOverlayViewModel(playbackManager);
+        container.register('PlayerOverlayViewModel', playerOverlayViewModel);
+      }
+
+      else if (feature === 'watchlist') {
+        // Needs DetailService which is part of details feature
+        await this.initializeOnDemand('details');
+        
+        const detailService = container.resolve<DetailService>('DetailService');
+        const watchlistViewModel = new WatchlistViewModel(detailService);
+        container.register('WatchlistViewModel', watchlistViewModel);
+      }
+      else if (feature === 'iptv') {
+        const iptvManager = new IptvManager(networkClient, logger);
+        container.register('IptvManager', iptvManager);
+        const iptvProvider = new IptvProvider(iptvManager);
+        providerManager.register(iptvProvider, 4); // High priority for live TV
+      }
+
+      const duration = performance.now() - start;
+      if (((typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ? false : (import.meta as any).env?.DEV)) {
+        logger.info(`[Bootstrap] Phase 3 (${feature}) completed in ${duration.toFixed(2)}ms`);
+      }
+    } catch (error) {
+      console.error(`[Bootstrap] Failure during Phase 3 (${feature}) initialization:`, error);
       throw error;
     }
   }

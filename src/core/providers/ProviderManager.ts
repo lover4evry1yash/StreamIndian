@@ -24,6 +24,14 @@ export class ProviderManager {
     this.registry.unregister(id);
   }
 
+  public getProviders() {
+    return this.registry.getAll();
+  }
+
+  public setProviderEnabled(id: string, enabled: boolean): void {
+    this.registry.setEnabled(id, enabled);
+  }
+
   public async initializeAll(): Promise<void> {
     const providers = this.registry.getEnabled();
     for (const { provider } of providers) {

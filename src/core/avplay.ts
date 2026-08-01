@@ -4,7 +4,7 @@
  */
 
 import { AVPlayPlayerState, AVPlayPlaybackInfo, StreamSource } from '../types/tizen';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 
 export type AVPlayEventCallback = (info: AVPlayPlaybackInfo) => void;
 
@@ -28,10 +28,10 @@ export class AVPlayManager {
   private detectAVPlayCapability() {
     if (typeof window !== 'undefined' && (window as any).webapis && (window as any).webapis.avplay) {
       this.isNativeAVPlay = true;
-      if (import.meta.env.DEV) console.log('[AVPlayManager] Native Samsung AVPlay (webapis.avplay) detected.');
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('[AVPlayManager] Native Samsung AVPlay (webapis.avplay) detected.');
     } else {
       this.isNativeAVPlay = false;
-      if (import.meta.env.DEV) console.log('[AVPlayManager] Web Preview Mode: Using HTML5 Video with AVPlay Bridge emulation.');
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('[AVPlayManager] Web Preview Mode: Using HTML5 Video with AVPlay Bridge emulation.');
     }
   }
 
@@ -44,14 +44,14 @@ export class AVPlayManager {
             if (this.currentState === AVPlayPlayerState.PLAYING || this.currentState === AVPlayPlayerState.PAUSED) {
                try {
                  (window as any).webapis.avplay.suspend();
-                 if (import.meta.env.DEV) console.log('[AVPlayManager] suspended');
+                 if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('[AVPlayManager] suspended');
                } catch(e) { console.warn('[AVPlayManager] suspend error', e); }
             }
           } else {
             if (this.currentState === AVPlayPlayerState.PLAYING || this.currentState === AVPlayPlayerState.PAUSED) {
                try {
                  (window as any).webapis.avplay.restore();
-                 if (import.meta.env.DEV) console.log('[AVPlayManager] restored');
+                 if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('[AVPlayManager] restored');
                } catch(e) { console.warn('[AVPlayManager] restore error', e); }
             }
           }
@@ -67,7 +67,7 @@ export class AVPlayManager {
       const events = ['loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'play', 'playing', 'pause', 'waiting', 'stalled', 'suspend', 'abort', 'progress', 'seeking', 'seeked', 'ended', 'error'];
       events.forEach(evt => {
         this.videoElement.addEventListener(evt, (e) => {
-          if (import.meta.env.DEV) console.log(`[HTML5 EVENT] ${evt} @ ${Date.now()}`);
+          if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log(`[HTML5 EVENT] ${evt} @ ${Date.now()}`);
         });
       });
 
@@ -237,36 +237,53 @@ export class AVPlayManager {
              reject(new Error(msg));
           };
 
-          if (Hls.isSupported() && stream.url.includes('.m3u8')) {
-            const hls = new Hls();
-            this.hls = hls;
-            hls.loadSource(stream.url);
-            hls.attachMedia(this.videoElement);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-              // Wait for video element to have metadata
-              if (this.videoElement!.readyState >= 1) {
-                onReady();
-              } else {
+          if (stream.url.includes('.m3u8')) {
+            import('hls.js').then(({ default: Hls }) => {
+              if (Hls.isSupported()) {
+                const hls = new Hls();
+                this.hls = hls;
+                hls.loadSource(stream.url);
+                hls.attachMedia(this.videoElement!);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                  // Wait for video element to have metadata
+                  if (this.videoElement!.readyState >= 1) {
+                    onReady();
+                  } else {
+                    this.videoElement!.addEventListener('loadedmetadata', onReady, { once: true });
+                  }
+                });
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                  if (data.fatal) {
+                    switch (data.type) {
+                      case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.error('fatal network error encountered, try to recover');
+                        hls.startLoad();
+                        break;
+                      case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.error('fatal media error encountered, try to recover');
+                        hls.recoverMediaError();
+                        break;
+                      default:
+                        hls.destroy();
+                        onError(event, data);
+                        break;
+                    }
+                  }
+                });
+              } else if (this.videoElement!.canPlayType('application/vnd.apple.mpegurl')) {
+                this.videoElement!.src = stream.url;
                 this.videoElement!.addEventListener('loadedmetadata', onReady, { once: true });
+                this.videoElement!.addEventListener('error', (e) => onError(e, this.videoElement?.error), { once: true });
+                this.videoElement!.load();
+              } else {
+                this.videoElement!.src = stream.url;
+                this.videoElement!.addEventListener('loadedmetadata', onReady, { once: true });
+                this.videoElement!.addEventListener('error', (e) => onError(e, this.videoElement?.error), { once: true });
+                this.videoElement!.load();
               }
-            });
-            hls.on(Hls.Events.ERROR, (event, data) => {
-              if (data.fatal) {
-                switch (data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.error('fatal network error encountered, try to recover');
-                    hls.startLoad();
-                    break;
-                  case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.error('fatal media error encountered, try to recover');
-                    hls.recoverMediaError();
-                    break;
-                  default:
-                    hls.destroy();
-                    onError(event, data);
-                    break;
-                }
-              }
+            }).catch(err => {
+              console.error('Failed to load hls.js', err);
+              onError('Failed to load HLS library', err);
             });
           } else if (this.videoElement.canPlayType('application/vnd.apple.mpegurl')) {
             this.videoElement.src = stream.url;
@@ -302,16 +319,16 @@ export class AVPlayManager {
       }
     } else if (this.videoElement) {
       // STEP 2: BEFORE CALLING PLAY()
-      if (import.meta.env.DEV) console.log('--- STEP 2: BEFORE HTML5 PLAY() ---');
-      if (import.meta.env.DEV) console.log('video.currentSrc:', this.videoElement.currentSrc);
-      if (import.meta.env.DEV) console.log('video.readyState:', this.videoElement.readyState);
-      if (import.meta.env.DEV) console.log('video.networkState:', this.videoElement.networkState);
-      if (import.meta.env.DEV) console.log('video.paused:', this.videoElement.paused);
-      if (import.meta.env.DEV) console.log('video.ended:', this.videoElement.ended);
-      if (import.meta.env.DEV) console.log('video.canPlayType("video/mp4"):', this.videoElement.canPlayType('video/mp4'));
-      if (import.meta.env.DEV) console.log('video.canPlayType("video/webm"):', this.videoElement.canPlayType('video/webm'));
-      if (import.meta.env.DEV) console.log('video.canPlayType("application/vnd.apple.mpegurl"):', this.videoElement.canPlayType('application/vnd.apple.mpegurl'));
-      if (import.meta.env.DEV) console.log('-----------------------------------');
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('--- STEP 2: BEFORE HTML5 PLAY() ---');
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.currentSrc:', this.videoElement.currentSrc);
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.readyState:', this.videoElement.readyState);
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.networkState:', this.videoElement.networkState);
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.paused:', this.videoElement.paused);
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.ended:', this.videoElement.ended);
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.canPlayType("video/mp4"):', this.videoElement.canPlayType('video/mp4'));
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.canPlayType("video/webm"):', this.videoElement.canPlayType('video/webm'));
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('video.canPlayType("application/vnd.apple.mpegurl"):', this.videoElement.canPlayType('application/vnd.apple.mpegurl'));
+      if ((typeof process !== "undefined" && process.env.NODE_ENV === "test") ? false : (import.meta as any).env?.DEV) console.log('-----------------------------------');
 
       this.videoElement.play().catch((err) => {
         console.warn('[AVPlay HTML5 Play Warning]', err);

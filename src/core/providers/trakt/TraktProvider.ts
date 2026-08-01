@@ -74,7 +74,7 @@ export class TraktProvider implements IPersonalizationProvider, IRatingsProvider
     if (!this.client) throw new Error('TraktProvider not initialized');
     // Implement ratings fetching via client if needed
     // Placeholder for now
-    return [{ provider: 'trakt', score: 8.5 }];
+    return [];
   }
 
   public getDiagnostics() {

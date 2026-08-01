@@ -313,8 +313,17 @@ export const UniversalMediaDetailView: React.FC<Props> = ({ mediaId, mediaType, 
                }} groupId="media-details-modal" pendingFocus={pendingStreamFocus} onFocusComplete={() => setPendingStreamFocus(false)} />
              ) : (
                <div className="flex flex-col items-center justify-center h-64 w-full opacity-50">
-                 <h4 className="text-lg font-bold text-white mb-2">Select an Episode</h4>
-                 <p className="text-tv-text-secondary text-sm">Choose an episode to view available streams.</p>
+                 {(!episodesSection || !episodesSection.data || !episodesSection.data.episodes) ? (
+                   <>
+                     <h4 className="text-lg font-bold text-white mb-2">No Episodes Available</h4>
+                     <p className="text-tv-text-secondary text-sm">This season has no episodes listed.</p>
+                   </>
+                 ) : (
+                   <>
+                     <h4 className="text-lg font-bold text-white mb-2">Select an Episode</h4>
+                     <p className="text-tv-text-secondary text-sm">Choose an episode to view available streams.</p>
+                   </>
+                 )}
                </div>
              )}
           </div>

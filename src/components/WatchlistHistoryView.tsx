@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { MediaItem, HistoryRecord } from '../types/tizen';
 import { StreamIndianStorage } from '../core/storage';
-import { providerManager } from '../providers';
+import { useWatchlistViewModel } from '../context/ServiceContext';
 import { FocusItem } from './FocusItem';
 import { LazyImage } from './LazyImage';
 import { TVPoster } from '../design-system';
@@ -16,26 +16,33 @@ interface WatchlistHistoryViewProps {
 }
 
 export const WatchlistHistoryView: React.FC<WatchlistHistoryViewProps> = ({ onSelectMedia }) => {
+  const viewModel = useWatchlistViewModel();
+  
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [watchlistMedia, setWatchlistMedia] = useState<MediaItem[]>([]);
+  const [isLoadingWatchlist, setIsLoadingWatchlist] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    // Initial fetch
+    setHistoryRecords(viewModel.getHistory());
+    setWatchlistMedia(viewModel.getWatchlist());
+    setIsLoadingWatchlist(viewModel.getIsLoadingWatchlist());
 
-  const loadData = async () => {
-    const history = StreamIndianStorage.getHistory();
-    setHistoryRecords(history);
+    const unsubscribe = viewModel.subscribe(() => {
+      setHistoryRecords([...viewModel.getHistory()]);
+      setWatchlistMedia([...viewModel.getWatchlist()]);
+      setIsLoadingWatchlist(viewModel.getIsLoadingWatchlist());
+    });
 
-    const watchlistIds = StreamIndianStorage.getWatchlist();
-    const catalog = await providerManager.getUnifiedCatalog();
-    const savedItems = catalog.filter((item) => watchlistIds.includes(item.id));
-    setWatchlistMedia(savedItems);
-  };
+    viewModel.loadData();
+
+    return () => {
+      unsubscribe();
+    };
+  }, [viewModel]);
 
   const handleClearHistory = () => {
-    localStorage.removeItem('streamindian_history_v1');
-    setHistoryRecords([]);
+    viewModel.clearHistory();
   };
 
   return (
@@ -100,7 +107,7 @@ export const WatchlistHistoryView: React.FC<WatchlistHistoryViewProps> = ({ onSe
 
         {watchlistMedia.length === 0 ? (
           <div className="p-8 bg-white/5 rounded-2xl border border-white/10 text-center text-zinc-500 text-xs">
-            Your watchlist is empty. Add titles from the Home or Search pages!
+            {isLoadingWatchlist ? 'Loading watchlist...' : 'Your watchlist is empty. Add titles from the Home or Search pages!'}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">

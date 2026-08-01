@@ -24,7 +24,7 @@ export class MediaSectionBuilder {
       certifications: (media as any).certifications,
     });
 
-    if (details.type === 'series' && details.activeEpisodes) {
+    if (details.type === 'series' && details.activeEpisodes && details.activeEpisodes.length > 0) {
       addSection('episodes', 'Episodes', {
         activeSeason: details.activeSeason,
         episodes: details.activeEpisodes,

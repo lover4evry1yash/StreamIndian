@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { CheckCircle2, AlertTriangle, Cpu, Terminal, ShieldCheck, Layers, Tv, FileCode2 } from 'lucide-react';
 import { FocusItem } from './FocusItem';
 import { ProviderTestView } from './ProviderTestView';
-import { providerManager } from '../providers';
+import { useProviderManager } from '../context/ServiceContext';
 
 import { useAVPlayManager, useResolutionManager, useSourceManager, useDebridManager, useTransferManager, useImageManager } from '../context/ServiceContext';
 import { useEffect } from 'react';
@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 export const AuditPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'providers' | 'tizen' | 'legacy' | 'streams' | 'debrid' | 'images' | 'test'>('overview');
 
+  const providerManager = useProviderManager();
   const providers = providerManager.getProviders();
   const avplayManager = useAVPlayManager();
   const resolutionManager = useResolutionManager();
@@ -205,29 +206,31 @@ export const AuditPanel: React.FC = () => {
             </p>
           </div>
 
-          {providers.map((p) => (
+          {providers.map((reg) => {
+            const p = reg.provider;
+            return (
             <div key={p.id} className="bg-white/5 p-5 rounded-2xl border border-white/10 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-white text-sm">{p.name}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                    Active
+                    {reg.enabled ? 'Active' : 'Disabled'}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-1">{p.description}</p>
+                
                 <div className="flex items-center gap-2 mt-2 text-[11px] text-zinc-500">
-                  <span>Languages: {p.supportedLanguages.join(', ')}</span>
+                  <span>Capabilities: {Object.keys(p.capabilities || {}).join(', ')}</span>
                 </div>
               </div>
               <FocusItem
                 id={`provider-toggle-${p.id}`}
-                onClick={() => providerManager.setProviderEnabled(p.id, !p.enabled)}
+                onClick={() => providerManager.setProviderEnabled(p.id, !reg.enabled)}
                 className="px-3 py-1.5 rounded-xl bg-white/10 text-xs font-bold text-zinc-300 border border-white/10 hover:text-white"
               >
-                {p.enabled ? 'Disable' : 'Enable'}
+                {reg.enabled ? 'Disable' : 'Enable'}
               </FocusItem>
             </div>
-          ))}
+          );})}
         </div>
       )}
 

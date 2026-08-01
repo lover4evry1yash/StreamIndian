@@ -65,7 +65,7 @@ export class MDBListProvider implements ICollectionProvider, IRatingsProvider {
     if (!this.client) throw new Error('MDBListProvider not initialized');
     // Implement ratings fetching via client if needed
     // Placeholder for now
-    return [{ provider: 'mdblist', score: 8.0 }];
+    return [];
   }
 
   public getDiagnostics() {

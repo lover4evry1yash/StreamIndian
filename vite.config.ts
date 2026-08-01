@@ -15,37 +15,34 @@ export default defineConfig(() => {
       target: 'chrome69',
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-icons': ['lucide-react'],
-            'vendor-db': ['dexie'],
-            'core': [
-              './src/core/ServiceContainer.ts',
-              './src/core/EventBus.ts',
-              './src/core/Logger.ts',
-              './src/core/navigation/FocusEngine.ts',
-              './src/core/navigation/FocusGroup.ts',
-              './src/core/navigation/NavigationManager.ts',
-            ],
-            'rendering': [
-              './src/core/rendering/ImageManager.ts',
-              './src/core/rendering/PrefetchManager.ts',
-              './src/core/rendering/RenderMetrics.ts',
-              './src/components/LazyImage.tsx',
-            ],
-            'metadata': [
-              './src/core/metadata/MetadataManager.ts',
-            ],
-            'providers': [
-              './src/providers/index.ts',
-              './src/providers/indianMediaCatalog.ts'
-            ],
-            'iptv': ['./src/components/IPTVView.tsx', './src/core/iptv/IptvManager.ts'],
-            'search': ['./src/components/SearchView.tsx'],
-            'details': ['./src/components/UniversalMediaDetailView.tsx'],
-            'player': ['./src/components/TVPlayer.tsx'],
-            'settings': ['./src/components/SettingsView.tsx'],
-            'diagnostics': ['./src/components/AuditPanel.tsx']
+          manualChunks(id) {
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/scheduler/')) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/lucide-react/')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('node_modules/dexie/')) {
+              return 'vendor-db';
+            }
+            if (id.includes('node_modules/hls.js/')) {
+              return 'hls'; // Should already be separate but good to ensure
+            }
+            if (id.includes('node_modules/')) {
+              return 'vendor'; // Fallback for other node_modules
+            }
+            // Keep core startup-critical stuff in a single file?
+            if (
+              id.includes('/src/core/ServiceContainer') ||
+              id.includes('/src/core/EventBus') ||
+              id.includes('/src/core/Logger') ||
+              id.includes('/src/core/navigation/') ||
+              id.includes('/src/core/Bootstrap') ||
+              id.includes('/src/core/providers/ProviderManager') ||
+              id.includes('/src/core/metadata/')
+            ) {
+              return 'core';
+            }
           }
         }
       }

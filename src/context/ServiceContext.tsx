@@ -25,6 +25,7 @@ import { HomeCatalogService } from '../core/services/HomeCatalogService';
 import { HomeViewModel } from '../core/home/HomeViewModel';
 import { StreamViewModel } from '../core/streams/viewmodels/StreamViewModel';
 import { PlayerOverlayViewModel } from '../core/playback/viewmodels/PlayerOverlayViewModel';
+import { WatchlistViewModel } from '../core/watchlist/WatchlistViewModel';
 
 const ServiceContext = createContext<ServiceContainer>(container);
 
@@ -62,3 +63,4 @@ export const useHomeCatalogService = () => useContainer().resolve<HomeCatalogSer
 export const useHomeViewModel = () => useContainer().resolve<HomeViewModel>('HomeViewModel');
 export const useStreamViewModel = () => useContainer().resolve<StreamViewModel>('StreamViewModel');
 export const usePlayerOverlayViewModel = () => useContainer().resolve<PlayerOverlayViewModel>('PlayerOverlayViewModel');
+export const useWatchlistViewModel = () => useContainer().resolve<WatchlistViewModel>('WatchlistViewModel');

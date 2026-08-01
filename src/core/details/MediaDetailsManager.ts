@@ -62,8 +62,8 @@ export class MediaDetailsManager {
           details.activeSeason = { id: `${id}_s${seasonNumber}`, seriesId: id, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: episodes.length, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
           details.activeEpisodes = episodes;
         } else {
-          details.activeSeason = { id: `${id}_s${seasonNumber}`, seriesId: id, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: 1, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
-          details.activeEpisodes = [{ id: `${id}_s${seasonNumber}_e1`, seriesId: id, seasonNumber, episodeNumber: 1, title: 'Episode 1 (Placeholder)', overview: 'Episode data unavailable.', durationMinutes: 45, images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] }, externalIds: {}, ratings: [] }];
+          details.activeSeason = { id: `${id}_s${seasonNumber}`, seriesId: id, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: 0, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
+          details.activeEpisodes = [];
         }
       }
 
@@ -90,8 +90,8 @@ export class MediaDetailsManager {
         this.repository.setActiveDetails(seriesId, details);
         this.eventBus.emit(MediaDetailsEventType.DETAILS_UPDATED, { mediaId: seriesId, mediaType: details.type, data: details });
       } else {
-        details.activeSeason = { id: `${seriesId}_s${seasonNumber}`, seriesId, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: 1, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
-        details.activeEpisodes = [{ id: `${seriesId}_s${seasonNumber}_e1`, seriesId, seasonNumber, episodeNumber: 1, title: 'Episode 1 (Placeholder)', overview: 'Episode data unavailable.', durationMinutes: 45, images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] }, externalIds: {}, ratings: [] }];
+        details.activeSeason = { id: `${seriesId}_s${seasonNumber}`, seriesId, seasonNumber, title: `Season ${seasonNumber}`, episodesCount: 0, overview: '', images: [], artwork: { posters: [], backdrops: [], banners: [], landscapes: [], thumbs: [], logos: [], clearLogos: [], clearArts: [], discArts: [], characterArts: [] } };
+        details.activeEpisodes = [];
         this.repository.setActiveDetails(seriesId, details);
         this.eventBus.emit(MediaDetailsEventType.DETAILS_UPDATED, { mediaId: seriesId, mediaType: details.type, data: details });
       }

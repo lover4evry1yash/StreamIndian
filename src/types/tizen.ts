@@ -95,17 +95,6 @@ export interface HistoryRecord {
   language: string;
 }
 
-export interface CatalogProvider {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  supportedLanguages: string[];
-  isLegalSource: boolean;
-  fetchCatalog: (languageFilter?: string, query?: string) => Promise<MediaItem[]>;
-  resolveStream: (mediaId: string) => Promise<StreamSource[]>;
-}
-
 export type TizenKeyCode =
   | 'KEY_LEFT'
   | 'KEY_RIGHT'

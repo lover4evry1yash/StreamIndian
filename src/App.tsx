@@ -5,19 +5,21 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { SkeletonDetails } from './components/SkeletonRenderer';
+import { Bootstrap } from './core/Bootstrap';
 import { SpatialFocusProvider } from './components/SpatialFocusContainer';
 import { FocusItem } from './components/FocusItem';
 import { LazyImage } from './components/LazyImage';
 import { TVNavbar } from './components/TVNavbar';
 import { MediaRow } from './components/MediaRow';
-const UniversalMediaDetailView = React.lazy(() => import('./components/UniversalMediaDetailView').then(module => ({ default: module.UniversalMediaDetailView })));
-const TVPlayer = React.lazy(() => import('./components/TVPlayer').then(module => ({ default: module.TVPlayer })));
-import { OnScreenRemote } from './components/OnScreenRemote';
-const AuditPanel = React.lazy(() => import('./components/AuditPanel').then(module => ({ default: module.AuditPanel })));
-const SearchView = React.lazy(() => import('./components/SearchView').then(module => ({ default: module.SearchView })));
-const WatchlistHistoryView = React.lazy(() => import('./components/WatchlistHistoryView').then(module => ({ default: module.WatchlistHistoryView })));
-const SettingsView = React.lazy(() => import('./components/SettingsView').then(module => ({ default: module.SettingsView })));
-const IPTVView = React.lazy(() => import('./components/IPTVView').then(module => ({ default: module.IPTVView })));
+import { FeatureLoader } from './core/FeatureLoader';
+const UniversalMediaDetailView = FeatureLoader.load('details', () => import('./components/UniversalMediaDetailView').then(module => ({ default: module.UniversalMediaDetailView })));
+const TVPlayer = FeatureLoader.load('playback', () => import('./components/TVPlayer').then(module => ({ default: module.TVPlayer })));
+const OnScreenRemote = FeatureLoader.load('remote', () => import('./components/OnScreenRemote').then(module => ({ default: module.OnScreenRemote })));
+const AuditPanel = FeatureLoader.load('audit', () => import('./components/AuditPanel').then(module => ({ default: module.AuditPanel })));
+const SearchView = FeatureLoader.load('search', () => import('./components/SearchView').then(module => ({ default: module.SearchView })));
+const WatchlistHistoryView = FeatureLoader.load('watchlist', () => import('./components/WatchlistHistoryView').then(module => ({ default: module.WatchlistHistoryView })));
+const SettingsView = FeatureLoader.load('settings', () => import('./components/SettingsView').then(module => ({ default: module.SettingsView })));
+const IPTVView = FeatureLoader.load('iptv', () => import('./components/IPTVView').then(module => ({ default: module.IPTVView })));
 
 import { MediaItem, StreamSource, PlaybackReadiness } from './types/tizen';
 import { tizenKeyController } from './core/tizenKeys';
