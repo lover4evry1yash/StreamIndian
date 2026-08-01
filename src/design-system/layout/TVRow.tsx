@@ -50,6 +50,9 @@ export const TVRow: React.FC<TVRowProps> = ({
       if (container) {
         container.removeEventListener('scroll', handleScrollEnd);
       }
+      if (scrollState.current.scrollTimeout) {
+        clearTimeout(scrollState.current.scrollTimeout);
+      }
     };
   }, []);
 

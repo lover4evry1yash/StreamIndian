@@ -49,6 +49,10 @@ export class PlaybackManager {
     this.avplayManager.registerVideoContainer(element);
   }
 
+  public clearVideoContainer() {
+    this.avplayManager.clearVideoContainer();
+  }
+
   private setupAVPlayListeners() {
     this.avplayListenerCleanup = this.avplayManager.addListener((info: AVPlayPlaybackInfo) => {
       this.handleAVPlayState(info);

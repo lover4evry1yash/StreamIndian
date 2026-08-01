@@ -10,6 +10,7 @@ export interface CacheEntry<T> {
 export class CacheManager {
   private storage: StorageManager;
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
+  private readonly MAX_MEMORY_KEYS = 300;
 
   constructor(storage: StorageManager) {
     this.storage = storage;
@@ -54,7 +55,9 @@ export class CacheManager {
     const policy = CachePolicies[policyType];
     const entry: CacheEntry<T> = { value, timestamp: Date.now(), version };
 
+    this.memoryCache.delete(fullKey); // To refresh insertion order
     this.memoryCache.set(fullKey, entry);
+    this.enforceMemoryLimit();
 
     if (policy.persistence) {
        // Avoid blocking UI on Tizen by wrapping in setTimeout/Promise
@@ -80,11 +83,24 @@ export class CacheManager {
     // We ideally clear persistent storage matching this prefix too
   }
 
+  private enforceMemoryLimit(): void {
+    if (this.memoryCache.size > this.MAX_MEMORY_KEYS) {
+      const keysToDelete = this.memoryCache.size - this.MAX_MEMORY_KEYS;
+      let deleted = 0;
+      for (const key of this.memoryCache.keys()) {
+        this.memoryCache.delete(key);
+        deleted++;
+        if (deleted >= keysToDelete) break;
+      }
+    }
+  }
+
   public clearExpired(): void {
      const now = Date.now();
      for (const [key, entry] of this.memoryCache.entries()) {
-        // Need policy to determine exact expiration, this is just memory cleanup
-        // Real implementation would look up policy by group
+        if (now - entry.timestamp > 24 * 60 * 60 * 1000) { // Fallback 24h cleanup
+           this.memoryCache.delete(key);
+        }
      }
   }
 

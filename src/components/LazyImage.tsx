@@ -22,6 +22,8 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   ...props 
 }) => {
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement | HTMLImageElement | null>(null);
   const [prevLoadedSrc, setPrevLoadedSrc] = useState<string | null>(null);
   const [error, setError] = useState<boolean>(false);
   const startTime = useRef<number>(Date.now());
@@ -29,10 +31,27 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const metrics = useRenderMetrics();
   
   useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '600px' } // Load images when they are within 600px of viewport
+    );
+    if (containerRef.current) {
+      observer.observe(containerRef.current as Element);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (!src) {
       setError(true);
       return;
     }
+    if (!isVisible) return;
 
     let isMounted = true;
     setError(false);
@@ -76,7 +95,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         imageManager.unregisterDisplay(src);
       }
     };
-  }, [src, imageManager, crossfade]);
+  }, [src, imageManager, crossfade, isVisible]);
 
   // Handle priority promotion without unmounting
   useEffect(() => {
@@ -93,10 +112,10 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
   if (error) {
     if (fallbackSrc) {
-      return <img src={fallbackSrc} alt={alt} className={className} {...props} />;
+      return <img ref={containerRef as any} src={fallbackSrc} alt={alt} className={className} {...props} />;
     }
     return (
-      <div className={`bg-zinc-800 flex items-center justify-center ${className}`}>
+      <div ref={containerRef as any} className={`bg-zinc-800 flex items-center justify-center ${className}`}>
         <span className="text-zinc-500 text-xs text-center px-2">{alt || 'Unavailable'}</span>
       </div>
     );
@@ -104,9 +123,9 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
   if (!loadedSrc && !prevLoadedSrc) {
     return placeholder ? (
-      <>{placeholder}</>
+      <div ref={containerRef as any} className="w-full h-full">{placeholder}</div>
     ) : (
-      <div className={`bg-zinc-900 animate-pulse ${className}`} />
+      <div ref={containerRef as any} className={`bg-zinc-900 animate-pulse ${className}`} />
     );
   }
 
@@ -122,6 +141,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
       )}
       {loadedSrc && (
         <img 
+          ref={containerRef as any}
           src={loadedSrc} 
           alt={alt} 
           className={`transition-opacity duration-[800ms] opacity-100 ${className}`} 

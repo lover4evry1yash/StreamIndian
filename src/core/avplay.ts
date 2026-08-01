@@ -60,6 +60,10 @@ export class AVPlayManager {
     }
   }
 
+  public clearVideoContainer() {
+    this.videoElement = null;
+  }
+
   public registerVideoContainer(element: HTMLVideoElement) {
     this.videoElement = element;
     if (this.videoElement) {

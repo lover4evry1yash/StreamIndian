@@ -132,8 +132,12 @@ export class FocusEngine {
     }
   }
 
-  public cacheCoordinates(): void {
+  public cacheCoordinates(trapFocusGroup?: string): void {
     for (const node of this.nodes.values()) {
+      if (trapFocusGroup && node.groupId !== trapFocusGroup) {
+        node.cachedRect = undefined;
+        continue;
+      }
       const el = node.getElement();
       if (el) {
         node.cachedRect = el.getBoundingClientRect();
@@ -292,7 +296,9 @@ export class FocusEngine {
       return false;
     }
 
-    this.cacheCoordinates();
+    const activeGroup = this.groups.get(this.activeGroupId);
+    const trapFocus = activeGroup?.trapFocus || false;
+    this.cacheCoordinates(trapFocus ? this.activeGroupId : undefined);
     const currentNode = this.nodes.get(this.focusedNodeId);
     if (!currentNode || !currentNode.cachedRect) {
       if (((typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ? false : (import.meta as any).env?.DEV)) console.log(`[NAV_LOG] ERROR: Current node ${this.focusedNodeId} not registered or has no cachedRect!`);
@@ -310,8 +316,6 @@ export class FocusEngine {
       y: currentRect.top + currentRect.height / 2,
     };
 
-    const activeGroup = this.groups.get(this.activeGroupId);
-    const trapFocus = activeGroup?.trapFocus || false;
     if (((typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ? false : (import.meta as any).env?.DEV)) console.log(`[NAV_LOG] TrapFocus for active group '${this.activeGroupId}': ${trapFocus}`);
 
     interface Candidate {

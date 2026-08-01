@@ -105,6 +105,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({
       eventBus.off('PLAYBACK_ERROR', onError);
       eventBus.off('PLAYBACK_BUFFER', onBuffer);
       playbackManager.stop();
+      playbackManager.clearVideoContainer();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media.id, stream.id, startTimeSeconds]);

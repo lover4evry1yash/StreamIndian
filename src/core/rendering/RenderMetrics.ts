@@ -33,6 +33,10 @@ export class RenderMetrics {
   
   public setEnabled(enabled: boolean) {
     this.enabled = enabled;
+    if (!enabled && this.observer) {
+        this.observer.disconnect();
+        this.observer = null;
+    }
     if (enabled && !this.observer && typeof PerformanceObserver !== 'undefined') {
       try {
         this.observer = new PerformanceObserver((list) => {
