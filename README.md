@@ -2,7 +2,7 @@
 
 > Production-Quality, High-Performance Streaming Application for Samsung Tizen Smart TVs.
 
-StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 4.0+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and stream resolution framework with Debrid integration.
+StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 5.0+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and stream resolution framework with Debrid integration.
 
 ---
 
