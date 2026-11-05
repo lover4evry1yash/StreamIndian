@@ -56,6 +56,32 @@ Providers
 
 # Core Modules
 
+## Runtime Startup and Ownership
+
+`src/main.tsx` is the single browser entry point. It awaits `Bootstrap.initializeCritical()` before mounting React. Bootstrap constructs and registers shared services in the singleton `ServiceContainer`; React receives access through `ServiceProvider` and typed context hooks. Feature-specific view models are registered by `initializeOnDemand`, not constructed by components.
+
+The startup order is configuration and logging, event bus and platform capabilities, storage/settings/cache, lifecycle and navigation, AVPlay adapter and playback manager, providers, then metadata and home services. Idle and on-demand initialization run only after the critical path.
+
+`Bootstrap.shutdown()` is the matching teardown boundary: it destroys playback and navigation listeners, removes lifecycle listeners, shuts down providers, clears event subscriptions and releases the service registry. It is invoked from the lifecycle exit event. Initialization flags are set only after successful phase completion.
+
+## Errors and Events
+
+The `EventBus` is typed by `EventMap`, returns unsubscribe functions from subscriptions, dispatches against a listener snapshot, and routes handler exceptions to the bootstrap logger. `Logger` supplies structured severity/prefix output. The React `ErrorBoundary` remains the UI rendering boundary; playback errors are represented by typed playback error events.
+
+## Playback Platform Boundary
+
+`PlaybackManager` depends on the `AVPlayAdapter` interface. `AVPlayManager` implements that boundary and owns the Samsung `webapis.avplay` calls, while browser preview uses the registered HTML video element. Tests inject a fake AVPlay API into the manager, so desktop tests exercise state and failure handling without claiming hardware compatibility.
+
+The AVPlay prepare operation is asynchronous and session-scoped. Timeout, abort, replacement, or stop invalidates the active session; callbacks from older sessions are ignored. Native listener subscriptions and lifecycle listeners have explicit cleanup methods. AVPlay callback times are milliseconds and are normalized to seconds at the adapter boundary.
+
+## Runtime Test Strategy
+
+`npm run test:core` covers safe configuration defaults, event subscription/error handling, lifecycle teardown, AVPlay state transitions, errors, timeout, cancellation, stale callbacks, and repeated stop. The full Node test suite and production/Tizen builds remain separate checks. Passing these tests does not verify codec support, playback surfaces, audio output, or performance on a Samsung TV.
+
+## Platform Support
+
+Tizen 5.0 is the minimum declared runtime because it matches `public/config.xml`; Tizen 4 compatibility has not been verified. Device packaging, signing, AVPlay tracks, buffering, and playback still require Tizen Studio plus emulator or physical TV validation.
+
 ## Bootstrap
 
 Responsibilities

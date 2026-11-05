@@ -23,7 +23,7 @@ export class Config {
       apiTimeoutMs: 15000,
       maxRetries: 3,
       tmdb: {
-        apiKey: (import.meta as any).env?.VITE_TMDB_API_KEY || 'your_default_api_key', // Ensure VITE_TMDB_API_KEY is in .env
+        apiKey: (import.meta as any).env?.VITE_TMDB_API_KEY || '',
         language: 'en-US',
         region: 'US',
         imageBaseUrl: 'https://image.tmdb.org/t/p/',
@@ -41,6 +41,6 @@ export class Config {
   }
 
   public getAll(): AppConfig {
-    return { ...this.config };
+    return { ...this.config, tmdb: { ...this.config.tmdb } };
   }
 }
