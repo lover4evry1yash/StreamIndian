@@ -4,6 +4,7 @@ export interface FetchOptions extends RequestInit {
   timeoutMs?: number;
   retries?: number;
   providerId?: string;
+  maxResponseBytes?: number;
 }
 
 export interface NetworkDiagnostics {
@@ -136,14 +137,15 @@ export class NetworkClient {
   }
 
   public async fetch(url: string, options: FetchOptions = {}): Promise<Response> {
-    const { timeoutMs = 15000, retries = 3, providerId = 'unknown', ...fetchOptions } = options;
+    const { timeoutMs = 15000, retries = 3, providerId = 'unknown', maxResponseBytes: _maxResponseBytes, ...fetchOptions } = options;
     
     // Deduplication Key
     const dedupKey = `${url}_${fetchOptions.method || 'GET'}_${JSON.stringify(fetchOptions.body || '')}`;
     
-    if (this.deduplicationMap.has(dedupKey)) {
+    const existingRequest = this.deduplicationMap.get(dedupKey);
+    if (existingRequest) {
       if (providerId !== 'unknown') this.updateDiagnostics(providerId, { cacheHits: 1 });
-      const res = await this.deduplicationMap.get(dedupKey)!;
+      const res = await existingRequest;
       // We must clone the response because body stream can only be read once
       return res.clone();
     }
@@ -153,15 +155,16 @@ export class NetworkClient {
     this.deduplicationMap.set(dedupKey, fetchPromise);
     
     try {
-      const response = await fetchPromise;
-      return response.clone();
+      return await fetchPromise;
     } finally {
-      this.deduplicationMap.delete(dedupKey);
+      if (this.deduplicationMap.get(dedupKey) === fetchPromise) {
+        this.deduplicationMap.delete(dedupKey);
+      }
     }
   }
 
   private async executeFetchWithRetries(url: string, options: FetchOptions): Promise<Response> {
-    const { timeoutMs, retries = 3, providerId = 'unknown', ...fetchOptions } = options;
+    const { timeoutMs, retries = 3, providerId = 'unknown', maxResponseBytes: _maxResponseBytes, ...fetchOptions } = options;
     
     let attempt = 0;
     
@@ -171,10 +174,9 @@ export class NetworkClient {
       if (providerId !== 'unknown') await this.waitForTokens(providerId);
 
       const start = Date.now();
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       try {
         const controller = new AbortController();
-        
-        let timeoutId: any;
         if (timeoutMs) {
             timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         }
@@ -193,7 +195,7 @@ export class NetworkClient {
         const durationMs = Date.now() - start;
 
         if (!response.ok) {
-          const cleanUrl = url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
+          const cleanUrl = redactUrl(url);
           this.logger.debug(`Fetch failed for ${cleanUrl} with status ${response.status}`);
           // Retry on 429, 500, 502, 503, 504
           const isRetryable = response.status === 429 || response.status >= 500;
@@ -212,6 +214,7 @@ export class NetworkClient {
         }
         return response;
       } catch (error: any) {
+        if (timeoutId) clearTimeout(timeoutId);
         const durationMs = Date.now() - start;
         const isTimeout = error.name === 'AbortError' || error.message.includes('Timeout');
         
@@ -220,12 +223,15 @@ export class NetworkClient {
             this.updateDiagnostics(providerId, { averageLatency: durationMs });
         }
         
-        const cleanUrl = url.replace(/([?&](?:api_key|apikey|token|auth_token)=)[^&]+/gi, '$1***');
-        this.logger.debug(`Attempt ${attempt + 1} failed for ${cleanUrl}: ${error.message}`);
+        const cleanUrl = redactUrl(url);
+        this.logger.debug(`Attempt ${attempt + 1} failed for ${cleanUrl}: ${redactUrl(String(error.message))}`);
         
         if (attempt === retries || error.isPermanent) {
           if (providerId !== 'unknown') this.updateDiagnostics(providerId, { failedRequests: 1 });
-          throw error;
+          if (error.isPermanent) throw error;
+          const safeError = new Error(redactUrl(String(error.message)));
+          safeError.name = error.name || 'Error';
+          throw safeError;
         }
         
         if (providerId !== 'unknown') this.updateDiagnostics(providerId, { retries: 1 });
@@ -238,12 +244,51 @@ export class NetworkClient {
       await this.sleep(baseWait + jitter);
     }
     
-    throw new Error(`Failed to fetch ${url} after ${retries} retries`);
+    throw new Error(`Failed to fetch ${redactUrl(url)} after ${retries} retries`);
   }
 
   public async getJson<T>(url: string, options?: FetchOptions): Promise<T> {
+    const text = await this.getText(url, options);
+    return JSON.parse(text) as T;
+  }
+
+  public async getText(url: string, options?: FetchOptions): Promise<string> {
     const response = await this.fetch(url, options);
-    return response.json();
+    const maxBytes = options?.maxResponseBytes;
+    if (maxBytes === undefined) return response.text();
+    if (!Number.isFinite(maxBytes) || maxBytes < 1) throw new RangeError('maxResponseBytes must be a positive finite number');
+    const declaredLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+      throw new Error(`JSON response exceeds the ${maxBytes} byte limit`);
+    }
+    if (!response.body?.getReader) {
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > maxBytes) {
+        throw new Error(`JSON response exceeds the ${maxBytes} byte limit`);
+      }
+      return text;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let size = 0;
+    let text = '';
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > maxBytes) {
+          await reader.cancel();
+          throw new Error(`JSON response exceeds the ${maxBytes} byte limit`);
+        }
+        text += decoder.decode(chunk.value, { stream: true });
+      }
+      text += decoder.decode();
+      return text;
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   private sleep(ms: number): Promise<void> {
@@ -263,4 +308,10 @@ class ScopedNetworkClient extends NetworkClient {
     public getJson<T>(url: string, options: FetchOptions = {}): Promise<T> {
         return this.parent.getJson<T>(url, { ...options, providerId: this.providerId });
     }
+}
+
+function redactUrl(value: string): string {
+  return value
+    .replace(/(https?:\/\/)[^/@\s]+@/gi, '$1[redacted]@')
+    .replace(/([?&](?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|token|client[_-]?secret|username|password)=)[^&\s]*/gi, '$1[redacted]');
 }

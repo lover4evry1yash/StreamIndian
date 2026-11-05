@@ -15,6 +15,7 @@ export interface IptvPlaylist {
 export interface IptvChannel {
   id: string;
   playlistId: string;
+  contentType?: 'live' | 'vod' | 'episode';
   name: string;
   streamUrl: string;
   logoUrl?: string;

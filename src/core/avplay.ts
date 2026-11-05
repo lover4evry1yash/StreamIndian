@@ -134,8 +134,8 @@ export class AVPlayManager implements AVPlayAdapter {
         const msg = error ? (error.message || `Code ${error.code}`) : 'Unknown error';
         console.error('[AVPlayManager] HTML5 Video Error:', msg);
         console.error('[AVPlayManager] HTML5 Diagnostics:', {
-          streamUrl: this.currentStream?.url,
-          currentSrc: this.videoElement?.currentSrc,
+          streamOrigin: safeStreamOrigin(this.currentStream?.url),
+          currentSrcOrigin: safeStreamOrigin(this.videoElement?.currentSrc),
           error: this.videoElement?.error,
           readyState: this.videoElement?.readyState,
           networkState: this.videoElement?.networkState,
@@ -357,8 +357,8 @@ export class AVPlayManager implements AVPlayAdapter {
              const msg = errInfo ? (errInfo.message || `Code ${errInfo.code}`) : 'Unknown error';
              console.error('[AVPlayManager] HTML5 Video Error:', msg);
              console.error('[AVPlayManager] HTML5 Diagnostics:', {
-               streamUrl: stream.url,
-               currentSrc: this.videoElement?.currentSrc,
+                streamOrigin: safeStreamOrigin(stream.url),
+                currentSrcOrigin: safeStreamOrigin(this.videoElement?.currentSrc),
                error: this.videoElement?.error,
                readyState: this.videoElement?.readyState,
                networkState: this.videoElement?.networkState,
@@ -722,6 +722,15 @@ export class AVPlayManager implements AVPlayAdapter {
     }
     this.listeners.clear();
     this.clearVideoContainer();
+  }
+}
+
+function safeStreamOrigin(value?: string | null): string {
+  if (!value) return 'unavailable';
+  try {
+    return new URL(value).origin;
+  } catch {
+    return 'unavailable';
   }
 }
 

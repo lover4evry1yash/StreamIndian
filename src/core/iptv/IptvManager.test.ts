@@ -55,3 +55,53 @@ test('EPG lookups use playlist-scoped time indexes for current and upcoming prog
     await iptvDb.delete();
   }
 });
+
+test('EPG channel lookup falls back from provider tvg id to tvg name and channel name', async () => {
+  await resetDatabase();
+  try {
+    const manager = new IptvManager({} as NetworkClient, new Logger());
+    const now = Date.now();
+    await iptvDb.programs.bulkPut([
+      { id: 'fallback', playlistId: 'one', tvgId: 'Synthetic News', title: 'Matched by name', startTime: now - 1000, endTime: now + 60_000 },
+    ]);
+
+    const program = await manager.epgManager.getNowPlayingForChannel({
+      playlistId: 'one', tvgId: 'provider-id', tvgName: 'Synthetic News', name: 'News',
+    });
+    assert.equal(program?.title, 'Matched by name');
+  } finally {
+    await iptvDb.delete();
+  }
+});
+
+test('recent IPTV history stores identifiers only and resolves current channel records', async () => {
+  await resetDatabase();
+  const previousStorage = globalThis.localStorage;
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    },
+  });
+  try {
+    const manager = new IptvManager({} as NetworkClient, new Logger());
+    const channel = {
+      id: 'recent-channel', playlistId: 'playlist-one', name: 'Recent channel',
+      streamUrl: 'https://provider.example.test/live/user/PASSWORD_PLACEHOLDER/1', group: 'News',
+      isFavorite: false, isHidden: false,
+    };
+    await iptvDb.channels.put(channel);
+    await manager.userDataManager.addRecentlyWatched(channel);
+
+    const stored = values.get('iptv_recent_channels') ?? '';
+    assert.equal(stored, '[{"id":"recent-channel","playlistId":"playlist-one"}]');
+    assert.doesNotMatch(stored, /PASSWORD_PLACEHOLDER|provider\.example/);
+    assert.equal((await manager.userDataManager.getRecentlyWatched())[0]?.streamUrl, channel.streamUrl);
+  } finally {
+    if (previousStorage === undefined) delete (globalThis as Partial<typeof globalThis>).localStorage;
+    else Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: previousStorage });
+    await iptvDb.delete();
+  }
+});

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useContainer } from '../context/ServiceContext';
 import { IptvManager } from '../core/iptv/IptvManager';
 import { IptvChannel, IptvPlaylist, IptvProgram } from '../core/iptv/models';
+import type { XtreamEpisode, XtreamSeries } from '../core/iptv/XtreamClient';
 import { FocusItem } from './FocusItem';
 import { AlertCircle, Heart, Plus, RefreshCw, Trash2, Tv } from 'lucide-react';
 import { LazyImage } from './LazyImage';
@@ -20,6 +21,9 @@ interface PlaylistDraft {
 }
 
 const PAGE_SIZE = 50;
+const GROUP_PAGE_SIZE = 20;
+const MAX_INITIAL_EPG_LOOKUPS = 200;
+const CATALOG_PAGE_SIZE = 50;
 
 export function IPTVView({ onSelectChannel }: IPTVViewProps) {
   const iptvManager = useContainer().resolve<IptvManager>('IptvManager');
@@ -28,6 +32,16 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
   const [channelsByGroup, setChannelsByGroup] = useState<Record<string, IptvChannel[]>>({});
   const [nowPlaying, setNowPlaying] = useState<Record<string, IptvProgram>>({});
   const [groups, setGroups] = useState<string[]>([]);
+  const [visibleGroupCount, setVisibleGroupCount] = useState(GROUP_PAGE_SIZE);
+  const [recentChannels, setRecentChannels] = useState<IptvChannel[]>([]);
+  const [catalogMode, setCatalogMode] = useState<'live' | 'vod' | 'series'>('live');
+  const [vodItems, setVodItems] = useState<IptvChannel[]>([]);
+  const [visibleVodCount, setVisibleVodCount] = useState(CATALOG_PAGE_SIZE);
+  const [seriesItems, setSeriesItems] = useState<XtreamSeries[]>([]);
+  const [visibleSeriesCount, setVisibleSeriesCount] = useState(CATALOG_PAGE_SIZE);
+  const [episodes, setEpisodes] = useState<XtreamEpisode[]>([]);
+  const [visibleEpisodeCount, setVisibleEpisodeCount] = useState(CATALOG_PAGE_SIZE);
+  const [selectedSeries, setSelectedSeries] = useState<XtreamSeries | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -38,23 +52,25 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
     name: '', type: 'm3u', url: '', epgUrl: '', username: '', password: '',
   });
   const loadGeneration = useRef(0);
+  const catalogGeneration = useRef(0);
 
   const loadChannels = useCallback(async (playlistId: string) => {
     const generation = ++loadGeneration.current;
+    catalogGeneration.current += 1;
     setLoading(true);
     try {
       const nextGroups = await iptvManager.getChannelGroups(playlistId);
-      const entries = await Promise.all(nextGroups.map(async (group) => [
+      const entries = await Promise.all(nextGroups.slice(0, GROUP_PAGE_SIZE).map(async (group) => [
         group,
         (await iptvManager.getChannelsByGroup(playlistId, group, PAGE_SIZE)).filter((channel) => !channel.isHidden),
       ] as const));
       if (generation !== loadGeneration.current) return;
-      const channels = entries.flatMap(([, groupChannels]) => groupChannels).filter((channel) => !!channel.tvgId);
+      const channels = entries.flatMap(([, groupChannels]) => groupChannels).slice(0, MAX_INITIAL_EPG_LOOKUPS);
       const programs: Record<string, IptvProgram> = {};
       for (let index = 0; index < channels.length; index += 10) {
         await Promise.all(channels.slice(index, index + 10).map(async (channel) => {
           try {
-            const program = await iptvManager.epgManager.getNowPlaying(channel.tvgId!, playlistId);
+            const program = await iptvManager.epgManager.getNowPlayingForChannel(channel);
             if (program) programs[channel.id] = program;
           } catch {
             // EPG is optional; a guide failure must not hide the channel list.
@@ -63,6 +79,8 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
       }
       if (generation !== loadGeneration.current) return;
       setGroups(nextGroups);
+      setVisibleGroupCount(GROUP_PAGE_SIZE);
+      setCatalogMode('live');
       setChannelsByGroup(Object.fromEntries(entries));
       setNowPlaying(programs);
     } catch (loadError) {
@@ -78,6 +96,7 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
     try {
       const nextPlaylists = await iptvManager.getPlaylists();
       setPlaylists(nextPlaylists);
+      setRecentChannels(await iptvManager.userDataManager.getRecentlyWatched());
       const nextSelection = nextPlaylists.find((playlist) => playlist.id === preferredId)
         ?? nextPlaylists[0]
         ?? null;
@@ -187,6 +206,87 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
     }
   };
 
+  const loadMoreGroups = async () => {
+    if (!selectedPlaylist || busy) return;
+    const nextCount = Math.min(groups.length, visibleGroupCount + GROUP_PAGE_SIZE);
+    setBusy(true);
+    try {
+      const nextGroups = groups.slice(visibleGroupCount, nextCount);
+      const entries = await Promise.all(nextGroups.map(async (group) => [
+        group,
+        (await iptvManager.getChannelsByGroup(selectedPlaylist.id, group, PAGE_SIZE)).filter((channel) => !channel.isHidden),
+      ] as const));
+      setChannelsByGroup((previous) => ({ ...previous, ...Object.fromEntries(entries) }));
+      setVisibleGroupCount(nextCount);
+    } catch (loadError) {
+      setError(messageOf(loadError, 'Failed to load more channel groups.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadVod = async () => {
+    if (!selectedPlaylist || selectedPlaylist.type !== 'xtream') return;
+    const generation = ++catalogGeneration.current;
+    const playlistId = selectedPlaylist.id;
+    setBusy(true);
+    setError('');
+    try {
+      setCatalogMode('vod');
+      const items = await iptvManager.xtreamClient.fetchVodStreams(selectedPlaylist);
+      if (generation === catalogGeneration.current && selectedPlaylist.id === playlistId) {
+        setVodItems(items);
+        setVisibleVodCount(CATALOG_PAGE_SIZE);
+      }
+    } catch (loadError) {
+      if (generation === catalogGeneration.current) setError(messageOf(loadError, 'Unable to load VOD from this Xtream provider.'));
+    } finally {
+      if (generation === catalogGeneration.current) setBusy(false);
+    }
+  };
+
+  const loadSeries = async () => {
+    if (!selectedPlaylist || selectedPlaylist.type !== 'xtream') return;
+    const generation = ++catalogGeneration.current;
+    const playlistId = selectedPlaylist.id;
+    setBusy(true);
+    setError('');
+    try {
+      setCatalogMode('series');
+      setSelectedSeries(null);
+      setEpisodes([]);
+      const items = await iptvManager.xtreamClient.fetchSeries(selectedPlaylist);
+      if (generation === catalogGeneration.current && selectedPlaylist.id === playlistId) {
+        setSeriesItems(items);
+        setVisibleSeriesCount(CATALOG_PAGE_SIZE);
+      }
+    } catch (loadError) {
+      if (generation === catalogGeneration.current) setError(messageOf(loadError, 'Unable to load series from this Xtream provider.'));
+    } finally {
+      if (generation === catalogGeneration.current) setBusy(false);
+    }
+  };
+
+  const loadEpisodes = async (series: XtreamSeries) => {
+    if (!selectedPlaylist) return;
+    const generation = ++catalogGeneration.current;
+    const playlistId = selectedPlaylist.id;
+    setBusy(true);
+    setError('');
+    try {
+      const items = await iptvManager.xtreamClient.fetchSeriesEpisodes(selectedPlaylist, series.id);
+      if (generation === catalogGeneration.current && selectedPlaylist.id === playlistId) {
+        setSelectedSeries(series);
+        setEpisodes(items);
+        setVisibleEpisodeCount(CATALOG_PAGE_SIZE);
+      }
+    } catch (loadError) {
+      if (generation === catalogGeneration.current) setError(messageOf(loadError, 'Unable to load episodes for this series.'));
+    } finally {
+      if (generation === catalogGeneration.current) setBusy(false);
+    }
+  };
+
   const toggleFavorite = async (channel: IptvChannel) => {
     try {
       await iptvManager.userDataManager.toggleFavorite(channel.id, !channel.isFavorite);
@@ -209,7 +309,11 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
       <FocusItem
         id={`iptv-channel-${channel.id}`}
         onClick={() => {
-          void iptvManager.userDataManager.addRecentlyWatched(channel);
+          if (!channel.id.includes('_vod:') && !channel.id.includes('_series:')) {
+            void iptvManager.userDataManager.addRecentlyWatched(channel);
+            setRecentChannels((previous) => [channel, ...previous.filter((item) => item.id !== channel.id)]
+              .slice(0, 50));
+          }
           onSelectChannel(channel);
         }}
         className="w-48 h-36 rounded-xl bg-zinc-900 border-2 border-transparent flex flex-col items-center justify-center p-4 text-center hover:border-white focus:border-white"
@@ -299,7 +403,32 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
         >{playlist.name}</FocusItem>)}
       </div>}
 
+      {recentChannels.length > 0 && <section>
+        <h3 className="mb-4 text-xl font-semibold">Recently watched</h3>
+        <div className="flex flex-wrap gap-4">{recentChannels.map(renderChannel)}</div>
+      </section>}
+
       {selectedPlaylist && <>
+        {selectedPlaylist.type === 'xtream' && <div className="flex gap-3">
+          <FocusItem id="iptv-mode-live" onClick={() => setCatalogMode('live')} className={`rounded-full px-5 py-3 font-bold ${catalogMode === 'live' ? 'bg-indigo-600' : 'bg-white/10'}`}>Live TV</FocusItem>
+          <FocusItem id="iptv-mode-vod" onClick={() => { void loadVod(); }} className={`rounded-full px-5 py-3 font-bold ${catalogMode === 'vod' ? 'bg-indigo-600' : 'bg-white/10'}`}>Movies</FocusItem>
+          <FocusItem id="iptv-mode-series" onClick={() => { void loadSeries(); }} className={`rounded-full px-5 py-3 font-bold ${catalogMode === 'series' ? 'bg-indigo-600' : 'bg-white/10'}`}>Series</FocusItem>
+        </div>}
+        {catalogMode === 'vod' && selectedPlaylist.type === 'xtream' ? <section>
+          <h3 className="mb-4 text-xl font-semibold">Movies</h3>
+          {busy ? <p className="text-zinc-400">Loading movies…</p> : vodItems.length ? <div className="flex flex-wrap gap-4">{vodItems.slice(0, visibleVodCount).map((item) => <FocusItem key={item.id} id={`iptv-vod-${item.id}`} onClick={() => onSelectChannel(item)} className="w-48 rounded-xl border-2 border-transparent bg-zinc-900 p-4 text-center hover:border-white focus:border-white">
+            {item.logoUrl && <LazyImage src={item.logoUrl} alt="" className="mx-auto mb-3 h-28 w-full object-cover" />}
+            <span className="line-clamp-2 text-sm font-medium">{item.name}</span>
+          </FocusItem>)}{visibleVodCount < vodItems.length && <FocusItem id="iptv-vod-more" onClick={() => setVisibleVodCount((count) => Math.min(vodItems.length, count + CATALOG_PAGE_SIZE))} className="rounded-xl bg-white/10 px-4 py-3 font-bold">Load more movies</FocusItem>}</div> : <p className="text-zinc-400">This provider returned no supported movies.</p>}
+        </section> : catalogMode === 'series' && selectedPlaylist.type === 'xtream' ? <section>
+          <h3 className="mb-4 text-xl font-semibold">{selectedSeries ? selectedSeries.name : 'Series'}</h3>
+          {selectedSeries && <FocusItem id="iptv-series-back" onClick={() => { setSelectedSeries(null); setEpisodes([]); }} className="mb-4 inline-block rounded-xl bg-white/10 px-4 py-3 font-bold">All series</FocusItem>}
+          {busy ? <p className="text-zinc-400">Loading series…</p> : selectedSeries ? episodes.length ? <div className="flex flex-wrap gap-4">{episodes.slice(0, visibleEpisodeCount).map((episode) => <FocusItem key={episode.id} id={`iptv-episode-${episode.id}`} onClick={() => onSelectChannel(episode)} className="w-56 rounded-xl border-2 border-transparent bg-zinc-900 p-4 text-left hover:border-white focus:border-white">
+            <span className="block text-xs text-zinc-400">Season {episode.seasonNumber} · Episode {episode.episodeNumber}</span><span className="mt-2 line-clamp-2 text-sm font-medium">{episode.name}</span>
+          </FocusItem>)}{visibleEpisodeCount < episodes.length && <FocusItem id="iptv-episode-more" onClick={() => setVisibleEpisodeCount((count) => Math.min(episodes.length, count + CATALOG_PAGE_SIZE))} className="rounded-xl bg-white/10 px-4 py-3 font-bold">Load more episodes</FocusItem>}</div> : <p className="text-zinc-400">This provider returned no supported episodes.</p> : seriesItems.length ? <div className="flex flex-wrap gap-4">{seriesItems.slice(0, visibleSeriesCount).map((series) => <FocusItem key={series.id} id={`iptv-series-${series.id}`} onClick={() => { void loadEpisodes(series); }} className="w-48 rounded-xl border-2 border-transparent bg-zinc-900 p-4 text-center hover:border-white focus:border-white">
+            {series.coverUrl && <LazyImage src={series.coverUrl} alt="" className="mx-auto mb-3 h-28 w-full object-cover" />}<span className="line-clamp-2 text-sm font-medium">{series.name}</span>
+          </FocusItem>)}{visibleSeriesCount < seriesItems.length && <FocusItem id="iptv-series-more" onClick={() => setVisibleSeriesCount((count) => Math.min(seriesItems.length, count + CATALOG_PAGE_SIZE))} className="rounded-xl bg-white/10 px-4 py-3 font-bold">Load more series</FocusItem>}</div> : <p className="text-zinc-400">This provider returned no series.</p>}
+        </section> : <>
         <div className="flex max-w-2xl items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
           <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full bg-transparent text-lg text-white outline-none" placeholder="Search channels" aria-label="Search channels" />
         </div>
@@ -307,7 +436,7 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
           <h3 className="mb-4 text-xl font-semibold">Search results</h3>
           {searchResults.length ? <div className="flex flex-wrap gap-4">{searchResults.map(renderChannel)}</div> : <p className="text-zinc-400">No matching channels.</p>}
         </section> : loading ? <p className="text-zinc-400">Loading channels…</p> : groups.length === 0 ? <p className="text-zinc-400">This playlist has no channels. Refresh it or check the URL.</p> : <div className="space-y-10">
-          {groups.map((group) => {
+          {groups.slice(0, visibleGroupCount).map((group) => {
             const channels = channelsByGroup[group] ?? [];
             return <section key={group}>
               <h3 className="mb-4 text-xl font-semibold">{group}</h3>
@@ -315,7 +444,9 @@ export function IPTVView({ onSelectChannel }: IPTVViewProps) {
               {channels.length >= PAGE_SIZE && <FocusItem id={`iptv-more-${group}`} onClick={() => { void loadMore(group); }} className="mt-4 inline-block rounded-xl bg-white/10 px-4 py-3 font-bold">Load more</FocusItem>}
             </section>;
           })}
+          {visibleGroupCount < groups.length && <FocusItem id="iptv-more-groups" onClick={() => { void loadMoreGroups(); }} className="inline-block rounded-xl bg-white/10 px-4 py-3 font-bold">Load more groups</FocusItem>}
         </div>}
+        </>}
       </>}
 
       {!playlists.length && !showAddForm && <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-zinc-300">

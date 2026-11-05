@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased — Mission 6/8/9 engineering foundation
+## Unreleased — Mission 6–7 engineering foundation
 - Added Tizen 6.5 / Chromium M85 compatibility fallbacks, Samsung Web API bootstrap, package CSP, and native AVPlay display surface checks.
 - Hardened IPTV parsing and indexed browsing; added playlist-scoped EPG queries, Xtream category mapping, playlist management, favorites, recent channels, and current-programme display.
+- Added bounded Xtream VOD and series catalogs, episode browsing, a recently watched shelf, and credential-safe local recents.
 - Added bounded local playback history and configurable metadata-based home recommendations without a hosted inference dependency.
-- Added IPTV, recommendation, identifier, and Tizen package smoke coverage.
+- Added IPTV, network response-boundary, recommendation, identifier, and Tizen package smoke coverage.
 
 All notable changes to the **StreamIndian** project will be documented in this file.
 

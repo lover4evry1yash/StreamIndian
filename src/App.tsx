@@ -219,15 +219,15 @@ export default function App() {
            const media: MediaItem = {
               id: channel.id,
               title: channel.name, originalTitle: channel.name,
-              mediaType: 'movie',
+              mediaType: channel.contentType === 'vod' ? 'movie' : channel.contentType === 'episode' ? 'episode' : 'live',
               language: 'English',
               year: new Date().getFullYear(),
               durationMinutes: 0,
               rating: '',
               imdbRating: 0,
               genres: [channel.group || 'Live TV'],
-              posterUrl: channel.logo || '',
-              backdropUrl: channel.logo || '',
+              posterUrl: channel.logoUrl || '',
+              backdropUrl: channel.logoUrl || '',
               description: 'Live TV Channel',
               cast: [],
               director: '',
@@ -237,9 +237,9 @@ export default function App() {
               streams: [{
                  id: channel.id,
                  url: channel.streamUrl,
-                 quality: '1080p FHD',
+                 quality: 'Unknown',
                  providerName: 'IPTV',
-                 format: 'HLS',
+                 format: playbackFormatFor(channel.streamUrl),
                  isLegalPublicStream: false,
                  readiness: PlaybackReadiness.DIRECT
               }]
@@ -287,4 +287,17 @@ export default function App() {
       </div>
     </SpatialFocusProvider>
   );
+}
+
+function playbackFormatFor(url: string): StreamSource['format'] {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    if (path.endsWith('.m3u8')) return 'HLS';
+    if (path.endsWith('.mpd')) return 'DASH';
+    if (path.endsWith('.ts')) return 'TS';
+    if (path.endsWith('.mp4')) return 'MP4';
+  } catch {
+    // Unknown or relative stream URLs fall through to the direct media fallback.
+  }
+  return 'UNKNOWN';
 }

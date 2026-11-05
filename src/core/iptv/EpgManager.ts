@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 import { iptvDb } from './IptvDatabase';
 import { IptvProgram } from './models';
 import { Logger } from '../Logger';
+import type { IptvChannel } from './models';
 
 export class EpgManager {
   constructor(private logger: Logger) {}
@@ -16,6 +17,19 @@ export class EpgManager {
         .between([tvgId, Dexie.minKey], [tvgId, now], true, true)
         .reverse().limit(25).toArray();
     return programs.find((program) => program.endTime >= now) ?? null;
+  }
+
+  public async getNowPlayingForChannel(channel: Pick<IptvChannel, 'playlistId' | 'tvgId' | 'tvgName' | 'name'>): Promise<IptvProgram | null> {
+    const candidates = [channel.tvgId, channel.tvgName, channel.name]
+      .map((value) => value?.trim())
+      .filter((value, index, values): value is string => !!value
+        && values.findIndex((candidate) => candidate?.toLocaleLowerCase() === value.toLocaleLowerCase()) === index);
+
+    for (const candidate of candidates) {
+      const program = await this.getNowPlaying(candidate, channel.playlistId);
+      if (program) return program;
+    }
+    return null;
   }
 
   public async getPrograms(tvgId: string, startTime: number, endTime: number, playlistId?: string, limit = 200): Promise<IptvProgram[]> {

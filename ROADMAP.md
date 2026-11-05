@@ -67,7 +67,8 @@ This document outlines the development milestones and feature roadmap for Stream
 ### IPTV Foundation
 - [x] Add and refresh M3U or Xtream live playlists and optional XMLTV EPG.
 - [x] Keep playlist queries scoped and result pages bounded; preserve existing channels if a refresh yields no live channels.
-- [ ] Add full VOD/series browsing, recently watched UI, catch-up controls, and provider-specific compatibility validation.
+- [x] Add core Xtream VOD and series browsing with a recently watched channel shelf.
+- [ ] Add catch-up after provider URL contracts are validated, plus provider-specific compatibility testing.
 
 ### Validation still required
 - [ ] Package and install with Tizen Studio on a supported Samsung TV or emulator.

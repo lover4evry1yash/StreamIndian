@@ -8,6 +8,8 @@ import { NetworkClient } from '../NetworkClient';
 import { Logger } from '../Logger';
 import { createId } from '../createId';
 
+const MAX_IPTV_RESPONSE_BYTES = 32 * 1024 * 1024;
+
 export class IptvManager {
   private parserEngine: ParserEngine;
   public xtreamClient: XtreamClient;
@@ -69,9 +71,7 @@ export class IptvManager {
       } else if (playlist.type === 'm3u') {
         let content = localFileContent;
         if (!content && playlist.url) {
-          const response = await this.network.fetch(playlist.url);
-          if (!response.ok) throw new Error(`Playlist request failed with HTTP ${response.status}`);
-          content = await response.text();
+          content = await this.network.getText(playlist.url, { maxResponseBytes: MAX_IPTV_RESPONSE_BYTES });
         }
         if (!content) throw new Error('No M3U content available');
         channels = await this.parserEngine.parseM3u(content, playlistId);
@@ -79,8 +79,10 @@ export class IptvManager {
 
       if (channels.length === 0) throw new Error('Playlist returned no live channels; existing channel data was preserved');
       await iptvDb.transaction('rw', iptvDb.channels, async () => {
-          const existing = await iptvDb.channels.where('playlistId').equals(playlistId).toArray();
-          const existingMap = new Map(existing.map(c => [c.streamUrl, c])); 
+          const existingMap = new Map<string, Pick<IptvChannel, 'isFavorite' | 'isHidden'>>();
+          await iptvDb.channels.where('playlistId').equals(playlistId).each((channel) => {
+            existingMap.set(channel.streamUrl, { isFavorite: channel.isFavorite, isHidden: channel.isHidden });
+          });
 
           const newChannels = channels.map(c => {
             const match = existingMap.get(c.streamUrl);
@@ -97,9 +99,7 @@ export class IptvManager {
 
       if (playlist.epgUrl) {
          try {
-            const response = await this.network.fetch(playlist.epgUrl);
-            if (!response.ok) throw new Error(`EPG request failed with HTTP ${response.status}`);
-            const content = await response.text();
+            const content = await this.network.getText(playlist.epgUrl, { maxResponseBytes: MAX_IPTV_RESPONSE_BYTES });
             const programs = await this.parserEngine.parseXmltv(content, playlistId);
             await this.epgManager.clearEpg(playlistId);
             await this.epgManager.savePrograms(programs);

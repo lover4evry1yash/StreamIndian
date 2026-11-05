@@ -38,6 +38,10 @@ test('XMLTV time parser rejects invalid dates and accounts for offsets', () => {
   assert.equal(parseXmltvTime('20260230010000 +0000'), null);
   assert.equal(parseXmltvTime('20261106110000 +0530'), Date.UTC(2026, 10, 6, 5, 30));
   assert.equal(parseXmltvTime('20261106110000 -0500'), Date.UTC(2026, 10, 6, 16, 0));
+  assert.equal(parseXmltvTime('20261106110000 +0099'), null);
+  assert.equal(parseXmltvTime('20261106110000 +1401'), null);
+  assert.equal(parseXmltvTime('20261106110000 +1400'), Date.UTC(2026, 10, 5, 21, 0));
+  assert.equal(parseXmltvTime('20261106110000 +0530 garbage'), null);
 });
 
 test('IPTV parsers reject oversized text before allocating parsed records', () => {

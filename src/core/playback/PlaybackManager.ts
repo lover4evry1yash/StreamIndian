@@ -124,7 +124,7 @@ export class PlaybackManager {
       });
 
       // Periodically save progress
-      if (info.state === AVPlayPlayerState.PLAYING && Math.floor(info.currentTime) % 10 === 0) {
+      if (this.session.media.mediaType !== 'live' && info.state === AVPlayPlayerState.PLAYING && Math.floor(info.currentTime) % 10 === 0) {
         this.historyService.saveProgress(this.session.media.id, this.session.stream.id, info.currentTime, info.duration);
       }
     }
@@ -142,7 +142,7 @@ export class PlaybackManager {
     }
     this.eventBus.emit('PLAYBACK_STATE_CHANGED', { state });
 
-    if (state === PlaybackState.COMPLETED && this.session) {
+    if (state === PlaybackState.COMPLETED && this.session && this.session.media.mediaType !== 'live') {
       this.historyService.markCompleted(this.session.media.id);
       this.eventBus.emit('PLAYBACK_COMPLETED');
     }
@@ -256,7 +256,7 @@ export class PlaybackManager {
   public stop(): void {
     this.requestGeneration++;
     this.clearRetryTimer();
-    if (this.session) {
+    if (this.session && this.session.media.mediaType !== 'live') {
         this.historyService.saveProgress(this.session.media.id, this.session.stream.id, this.session.currentTime, this.session.duration);
     }
     this.avplayManager.stop();

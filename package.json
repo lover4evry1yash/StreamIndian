@@ -15,8 +15,8 @@
     "pretest": "npm run build:tizen",
     "test": "tsx --test tests/**/*.test.ts",
     "test:tizen": "tsx --test tests/TizenBuild.test.ts",
-    "test:core": "tsx --test src/core/avplay.test.ts src/core/createId.test.ts src/core/home/HomeViewModel.test.ts src/core/iptv/parsers.test.ts src/core/playback/services/PlaybackHistoryService.test.ts src/core/recommendations/RecommendationService.test.ts src/core/runtime.test.ts src/core/Bootstrap.profile.test.ts",
-    "test:iptv": "tsx --test src/core/iptv/parsers.test.ts src/core/iptv/IptvManager.test.ts"
+    "test:core": "tsx --test src/core/NetworkClient.test.ts src/core/avplay.test.ts src/core/createId.test.ts src/core/home/HomeViewModel.test.ts src/core/iptv/parsers.test.ts src/core/playback/services/PlaybackHistoryService.test.ts src/core/recommendations/RecommendationService.test.ts src/core/runtime.test.ts src/core/Bootstrap.profile.test.ts",
+    "test:iptv": "tsx --test src/core/iptv/parsers.test.ts src/core/iptv/IptvManager.test.ts src/core/iptv/XtreamClient.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

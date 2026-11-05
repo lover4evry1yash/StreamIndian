@@ -124,16 +124,9 @@ UI Layer (React Views & Modals)
    ```
    This writes `dist/tizen/index.html`, relative assets, `config.xml`, `.tproject`, and `icon.png`. The existing `npm run build` remains the full-stack build.
    The minimum declared runtime is Tizen 6.5 (Chromium M85), required by the module-worker implementation. The Tizen build targets Chrome 85 and includes Samsung's Web API bootstrap script; browser development continues to use the HTML video fallback. Samsung's AVPlay display surface and API bootstrap are included only in the Tizen runtime path.
-2. Ensure Samsung Tizen Studio is installed and a signing profile is configured. In PowerShell, package from the generated Tizen project directory:
-   ```powershell
-   Push-Location .\dist\tizen
-   tizen package -t wgt -- .
-   Pop-Location
-   ```
-3. Install the resulting widget to a configured TV or emulator:
-   ```bash
-   tizen install -n StreamIndian.wgt -t <TV_DEVICE_ID>
-   ```
+2. Follow the reproducible PowerShell steps in [TIZEN_PACKAGING.md](./TIZEN_PACKAGING.md) to create a Samsung signing profile, package the WGT, install it, and diagnose runtime failures. A valid certificate profile is required; the project does not generate or include certificates.
+
+3. IPTV VOD and series browsing are available for Xtream providers that return supported stream IDs and container extensions. Catch-up playback is not enabled: providers expose archive metadata inconsistently and no validated URL template is available. Physical Samsung TV playback, remote focus, and codec support still require device validation.
 
 ---
 

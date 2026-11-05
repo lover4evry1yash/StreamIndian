@@ -100,3 +100,29 @@ test('playback manager ignores failures from a superseded prepare request', asyn
   assert.equal(manager.getState(), PlaybackState.PREPARING);
   manager.destroy();
 });
+
+test('live IPTV playback does not create on-demand playback history', () => {
+  const listener: { current?: (info: any) => void } = {};
+  const adapter = {
+    addListener: (callback: (info: any) => void) => { listener.current = callback; return () => { listener.current = undefined; }; },
+    destroy: () => {}, stop: () => {},
+  } as any;
+  const logger = new Logger();
+  logger.setLevel(LogLevel.NONE);
+  const manager = new PlaybackManager(new EventBus(), logger, {} as any, adapter);
+  let progressWrites = 0;
+  let completions = 0;
+  manager.historyService.saveProgress = async () => { progressWrites++; };
+  manager.historyService.markCompleted = async () => { completions++; };
+  (manager as any).session = {
+    media: { id: 'live-channel', mediaType: 'live', provider: 'iptv' },
+    stream: { id: 'live-stream' }, currentTime: 0, duration: 0, bufferingPercentage: 100,
+  };
+
+  listener.current?.({ state: 'PLAYING', currentTime: 10, duration: 100, bufferingPercentage: 100 });
+  listener.current?.({ state: 'STOPPED', currentTime: 100, duration: 100, bufferingPercentage: 100 });
+  manager.destroy();
+
+  assert.equal(progressWrites, 0);
+  assert.equal(completions, 0);
+});

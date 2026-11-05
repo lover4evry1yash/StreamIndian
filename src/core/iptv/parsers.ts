@@ -82,7 +82,7 @@ export function parseXmltvContent(
 }
 
 export function parseXmltvTime(value: string): number | null {
-  const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-])(\d{2})(\d{2}))?/.exec(value.trim());
+  const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-])(\d{2})(\d{2}))?$/.exec(value.trim());
   if (!match) return null;
 
   const [, yearText, monthText, dayText, hourText, minuteText, secondText, sign, offsetHourText, offsetMinuteText] = match;
@@ -98,8 +98,12 @@ export function parseXmltvTime(value: string): number | null {
   const localDate = new Date(localUtc);
   if (localDate.getUTCFullYear() !== year || localDate.getUTCMonth() !== month - 1 || localDate.getUTCDate() !== day) return null;
 
+  const offsetHour = Number(offsetHourText ?? 0);
+  const offsetMinute = Number(offsetMinuteText ?? 0);
+  if (offsetMinute > 59 || offsetHour > 14 || (offsetHour === 14 && offsetMinute !== 0)) return null;
+
   const offsetMinutes = offsetHourText
-    ? (Number(offsetHourText) * 60 + Number(offsetMinuteText)) * (sign === '+' ? 1 : -1)
+    ? (offsetHour * 60 + offsetMinute) * (sign === '+' ? 1 : -1)
     : 0;
   if (Math.abs(offsetMinutes) > 14 * 60) return null;
   return localUtc - offsetMinutes * 60_000;

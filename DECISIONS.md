@@ -104,3 +104,14 @@ This file records key architectural decisions made in the StreamIndian codebase,
 - **Consequences**:
   - `rm -rf .git` is explicitly banned for repository repairs outside of ephemeral sandbox environments.
   - Any future Git corruption in a connected repository must be handled non-destructively using `git fsck`, `git fetch origin`, and `git reset --hard origin/main`, or by restoring missing objects from the remote.
+
+---
+
+## ADR 009: Bounded Xtream Catalog Mapping and Identifier-Only Recents
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: Xtream responses are provider-controlled and may be large or malformed. Recent IPTV history previously duplicated full stream URLs, which can embed provider credentials, into localStorage.
+- **Decision**: Cap and validate Xtream VOD/series records before mapping them into app playback items, and persist only channel/playlist identifiers in recent history. Resolve those identifiers against the local IPTV database when rendering.
+- **Alternatives considered**: Keep raw provider objects in React/localStorage, or cache entire stream URLs in history. Both retain untrusted data and/or duplicate credential-bearing URLs.
+- **Consequences**: Recent IPTV items disappear when their channel is removed or hidden; Xtream entries with unsupported IDs or container extensions are skipped. Catch-up remains disabled until a provider's URL contract is known.
