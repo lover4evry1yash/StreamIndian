@@ -43,7 +43,7 @@ import { WatchlistViewModel } from './watchlist/WatchlistViewModel';
 import { Config } from './Config';
 import { DeviceCapabilities } from './DeviceCapabilities';
 import { NetworkClient } from './NetworkClient';
-import { AppLifecycle } from './AppLifecycle';
+import { AppLifecycle, AppLifecycleEvent } from './AppLifecycle';
 import { NavigationManager } from './navigation';
 import { PlaybackManager } from './playback';
 import { AVPlayManager } from './avplay';
@@ -95,10 +95,13 @@ export class Bootstrap {
   private static phase1Time: number = 0;
   private static phase2Time: number = 0;
   private static initFlags = new Set<string>();
+  private static initializationPromises = new Map<string, Promise<void>>();
 
-  public static async initializeCritical(): Promise<void> {
-    if (this.initFlags.has('critical')) return;
-    this.initFlags.add('critical');
+  public static initializeCritical(): Promise<void> {
+    return this.initializeOnce('critical', () => this.initializeCriticalOnce());
+  }
+
+  private static async initializeCriticalOnce(): Promise<void> {
     const start = performance.now();
     try {
       // 1. Initialize core utilities first
@@ -117,7 +120,7 @@ export class Bootstrap {
       container.register('Config', config);
       container.register('Logger', logger);
 
-      const eventBus = new EventBus();
+      const eventBus = new EventBus((error, event) => logger.error(`Event handler failed for ${String(event)}`, error));
       container.register('EventBus', eventBus);
 
       const device = new DeviceCapabilities();
@@ -151,6 +154,7 @@ export class Bootstrap {
       const lifecycle = new AppLifecycle(eventBus, logger, device);
       container.register('AppLifecycle', lifecycle);
       lifecycle.initialize();
+      eventBus.on(AppLifecycleEvent.EXIT, () => { void this.shutdown(); });
 
       // 5. Initialize Navigation
       const navigationManager = new NavigationManager(eventBus, lifecycle);
@@ -227,7 +231,7 @@ export class Bootstrap {
       const homeCatalogService = new HomeCatalogService(metadataManager, logger);
       container.register('HomeCatalogService', homeCatalogService);
 
-      const homeViewModel = new HomeViewModel(homeCatalogService, logger);
+      const homeViewModel = new HomeViewModel(homeCatalogService, logger, playbackManager.historyService);
       container.register('HomeViewModel', homeViewModel);
 
       this.phase1Time = performance.now() - start;
@@ -236,13 +240,16 @@ export class Bootstrap {
       }
     } catch (error) {
       console.error('[Bootstrap] Critical failure during Phase 1 initialization:', error);
+      await this.shutdown();
       throw error;
     }
   }
 
   public static async initializeIdle(): Promise<void> {
-    if (this.initFlags.has('idle')) return;
-    this.initFlags.add('idle');
+    return this.initializeOnce('idle', () => this.initializeIdleOnce());
+  }
+
+  private static async initializeIdleOnce(): Promise<void> {
     const start = performance.now();
     try {
       const logger = container.resolve<Logger>('Logger');
@@ -263,12 +270,15 @@ export class Bootstrap {
     } catch (error) {
       const logger = container.resolve<Logger>('Logger');
       logger.error('[Bootstrap] Failure during Phase 2 initialization:', error);
+      throw error;
     }
   }
 
   public static async initializeOnDemand(feature: 'search' | 'details' | 'playback' | 'iptv' | 'stream' | 'watchlist'): Promise<void> {
-    if (this.initFlags.has(`ondemand-${feature}`)) return;
-    this.initFlags.add(`ondemand-${feature}`);
+    return this.initializeOnce(`ondemand-${feature}`, () => this.initializeOnDemandOnce(feature));
+  }
+
+  private static async initializeOnDemandOnce(feature: 'search' | 'details' | 'playback' | 'iptv' | 'stream' | 'watchlist'): Promise<void> {
     const start = performance.now();
     
     try {
@@ -403,5 +413,40 @@ export class Bootstrap {
       console.error(`[Bootstrap] Failure during Phase 3 (${feature}) initialization:`, error);
       throw error;
     }
+  }
+
+  public static async shutdown(): Promise<void> {
+    const eventBus = this.tryResolve<EventBus>('EventBus');
+    const logger = this.tryResolve<Logger>('Logger');
+    try { this.tryResolve<PlaybackManager>('PlaybackManager')?.destroy(); }
+    catch (error) { logger?.error('Playback shutdown failed', error); }
+    try { this.tryResolve<NavigationManager>('NavigationManager')?.destroy(); }
+    catch (error) { logger?.error('Navigation shutdown failed', error); }
+    try { this.tryResolve<AppLifecycle>('AppLifecycle')?.destroy(); }
+    catch (error) { logger?.error('Lifecycle shutdown failed', error); }
+    try { await this.tryResolve<ProviderManager>('ProviderManager')?.shutdownAll(); }
+    catch (error) { logger?.error('Provider shutdown failed', error); }
+    eventBus?.clear();
+    container.clear();
+    this.initFlags.clear();
+    this.initializationPromises.clear();
+    this.phase1Time = 0;
+    this.phase2Time = 0;
+  }
+
+  private static tryResolve<T>(identifier: string): T | null {
+    try { return container.resolve<T>(identifier); }
+    catch { return null; }
+  }
+
+  private static initializeOnce(key: string, initialize: () => Promise<void>): Promise<void> {
+    if (this.initFlags.has(key)) return Promise.resolve();
+    const existing = this.initializationPromises.get(key);
+    if (existing) return existing;
+    const pending = initialize()
+      .then(() => { this.initFlags.add(key); })
+      .finally(() => { this.initializationPromises.delete(key); });
+    this.initializationPromises.set(key, pending);
+    return pending;
   }
 }

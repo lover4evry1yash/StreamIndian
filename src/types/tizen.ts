@@ -4,7 +4,7 @@
 
 export interface MediaItem {
   id: string;
-  mediaType: 'movie' | 'series' | 'anime' | 'episode';
+  mediaType: 'movie' | 'series' | 'anime' | 'episode' | 'live';
   seasonNumber?: number;
   episodeNumber?: number;
   title: string;
@@ -66,8 +66,8 @@ export interface StreamPresentationModel {
 
 export interface StreamSource {
   id: string;
-  quality: '4K HDR' | '1080p FHD' | '720p HD' | 'SD';
-  format: 'HLS' | 'DASH' | 'MP4';
+  quality: '4K HDR' | '1080p FHD' | '720p HD' | 'SD' | 'Unknown';
+  format: 'HLS' | 'DASH' | 'MP4' | 'TS' | 'UNKNOWN';
   url: string;
   bitrate?: number;
   audioTrack?: string;

@@ -46,12 +46,12 @@ export const HOME_SHELVES: ShelfDefinition[] = [
     title: 'Continue Watching',
     subtitle: 'Pick up where you left off',
     rule: {
-      isVisible: (context) => !!context.userHistory && context.userHistory.length > 0,
+      isVisible: (context) => !!context.continueWatching && context.continueWatching.length > 0,
       priority: 10
     },
     dataSource: (catalog, context) => {
-      if (!context.userHistory) return [];
-      return catalog.filter(m => context.userHistory!.includes(m.id));
+      if (!context.continueWatching) return [];
+      return catalog.filter(m => context.continueWatching!.includes(m.id));
     }
   },
   {
@@ -158,37 +158,13 @@ export const HOME_SHELVES: ShelfDefinition[] = [
     id: 'shelf-because-you-watched',
     type: 'because_you_watched',
     title: 'Because You Watched...',
-    subtitle: 'Personalized recommendations',
+    subtitle: 'Based on your viewing and preferences',
     rule: {
-      isVisible: (context) => !!context.userHistory && context.userHistory.length > 0,
+      isVisible: (context) => !!context.recommendations && context.recommendations.length > 0,
       priority: 80
     },
     dataSource: (catalog, context) => {
-      if (!context.userHistory || context.userHistory.length === 0) return [];
-      
-      const watchedItems = catalog.filter(m => context.userHistory!.includes(m.id));
-      if (watchedItems.length === 0) return [];
-
-      // Extract unique genres from watched history
-      const watchedGenres = new Set<string>();
-      watchedItems.forEach(item => item.genres.forEach(g => watchedGenres.add(g)));
-
-      // Recommend unwatched items that match at least one watched genre, sorted by matches
-      const recommendations = catalog
-        .filter(m => !context.userHistory!.includes(m.id)) // Exclude already watched
-        .map(item => {
-           let matchScore = 0;
-           item.genres.forEach(g => {
-              if (watchedGenres.has(g)) matchScore++;
-           });
-           return { item, matchScore };
-        })
-        .filter(entry => entry.matchScore > 0)
-        .sort((a, b) => b.matchScore - a.matchScore)
-        .map(entry => entry.item);
-
-      // Return top 15 recommendations
-      return recommendations.slice(0, 15);
+      return context.recommendations?.slice(0, 15) ?? [];
     }
   },
   {

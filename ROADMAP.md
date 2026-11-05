@@ -15,6 +15,9 @@ This document outlines the development milestones and feature roadmap for Stream
 - [x] Focus-Driven `ArtworkManager` & Memory-Managed `LazyImage`
 - [x] `VirtualCarousel` DOM Virtualization for Low-Spec Smart TVs
 - [x] Diagnostics & Audit Dashboard Panel
+- [x] Static Tizen package baseline for Tizen 6.5 / Chromium M85, including Samsung Web API bootstrap, AVPlay surface, package CSP, and CSS compatibility fallbacks.
+- [x] IPTV playlist foundation: local M3U and Xtream live playlists, bounded channel browsing/search, favorites, recent channels, and playlist-scoped XMLTV now/next data.
+- [x] Local recommendation foundation: continue-watching and metadata-based recommendations from saved history, favorites, and language preferences.
 
 ---
 
@@ -45,7 +48,8 @@ This document outlines the development milestones and feature roadmap for Stream
 
 ### Milestone 17: AI Discovery & Recommendations 🤖
 - [ ] Contextual natural-language media search and discovery.
-- [ ] Personalized recommendations based on viewing history and mood filters.
+- [x] Initial local recommendations from viewing history, watchlist, and language metadata; no inference service is required.
+- [ ] Richer personalized recommendations, mood filters, and evaluation against real user outcomes.
 
 ### Milestone 18: Durable Offline Engine & Caching 💾
 - [ ] IndexedDB persistence for metadata repositories and user preferences.
@@ -59,3 +63,13 @@ This document outlines the development milestones and feature roadmap for Stream
 ### Milestone 20: Production Release 🌟
 - [ ] Final security audit & zero-secret verification.
 - [ ] Samsung Tizen Seller Store packaging (`.wgt`) and certification submission.
+
+### IPTV Foundation
+- [x] Add and refresh M3U or Xtream live playlists and optional XMLTV EPG.
+- [x] Keep playlist queries scoped and result pages bounded; preserve existing channels if a refresh yields no live channels.
+- [x] Add core Xtream VOD and series browsing with a recently watched channel shelf.
+- [ ] Add catch-up after provider URL contracts are validated, plus provider-specific compatibility testing.
+
+### Validation still required
+- [ ] Package and install with Tizen Studio on a supported Samsung TV or emulator.
+- [ ] Verify D-pad/soft-keyboard flows, AVPlay surface sizing, codecs, audio/subtitle tracks, and playback on physical hardware.

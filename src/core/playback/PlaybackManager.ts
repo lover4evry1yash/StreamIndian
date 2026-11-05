@@ -9,7 +9,8 @@ import {
   SubtitleTrack
 } from './types';
 import { PlaybackSession } from './PlaybackSession';
-import { AVPlayManager, AVPlayEventCallback } from '../avplay';
+import { AVPlayEventCallback } from '../avplay';
+import type { AVPlayAdapter } from './AVPlayAdapter';
 import { AVPlayPlayerState, AVPlayPlaybackInfo, StreamSource, MediaItem } from '../../types/tizen';
 import { CacheManager } from '../storage';
 
@@ -22,7 +23,7 @@ export class PlaybackManager {
   private eventBus: EventBus;
   private logger: Logger;
   public historyService: PlaybackHistoryService;
-  private avplayManager: AVPlayManager;
+  private avplayManager: AVPlayAdapter;
   
   private currentState: PlaybackState = PlaybackState.IDLE;
   private session: PlaybackSession | null = null;
@@ -36,8 +37,11 @@ export class PlaybackManager {
   private avplayListenerCleanup: (() => void) | null = null;
   private lastStreamSource: StreamSource | null = null;
   private lastMedia: MediaItem | null = null;
+  private requestGeneration = 0;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastHandledErrorGeneration = -1;
 
-  constructor(eventBus: EventBus, logger: Logger, cacheManager: CacheManager, avplayManager: AVPlayManager) {
+  constructor(eventBus: EventBus, logger: Logger, cacheManager: CacheManager, avplayManager: AVPlayAdapter) {
     this.eventBus = eventBus;
     this.logger = logger;
     this.historyService = new PlaybackHistoryService(cacheManager);
@@ -65,11 +69,13 @@ export class PlaybackManager {
     switch (info.state) {
       case AVPlayPlayerState.IDLE:
       case AVPlayPlayerState.NONE:
-        newState = PlaybackState.IDLE;
+        newState = this.session ? this.currentState : PlaybackState.IDLE;
         break;
       case AVPlayPlayerState.INITIALIZED:
+        newState = PlaybackState.PREPARING;
+        break;
       case AVPlayPlayerState.PREPARED:
-        newState = PlaybackState.LOADING;
+        newState = PlaybackState.READY;
         break;
       case AVPlayPlayerState.PLAYING:
         newState = info.bufferingPercentage < 100 && info.bufferingPercentage > 0 ? PlaybackState.BUFFERING : PlaybackState.PLAYING;
@@ -118,7 +124,7 @@ export class PlaybackManager {
       });
 
       // Periodically save progress
-      if (info.state === AVPlayPlayerState.PLAYING && Math.floor(info.currentTime) % 10 === 0) {
+      if (this.session.media.mediaType !== 'live' && info.state === AVPlayPlayerState.PLAYING && Math.floor(info.currentTime) % 10 === 0) {
         this.historyService.saveProgress(this.session.media.id, this.session.stream.id, info.currentTime, info.duration);
       }
     }
@@ -136,13 +142,15 @@ export class PlaybackManager {
     }
     this.eventBus.emit('PLAYBACK_STATE_CHANGED', { state });
 
-    if (state === PlaybackState.COMPLETED && this.session) {
+    if (state === PlaybackState.COMPLETED && this.session && this.session.media.mediaType !== 'live') {
       this.historyService.markCompleted(this.session.media.id);
       this.eventBus.emit('PLAYBACK_COMPLETED');
     }
   }
 
   private async handlePlaybackError(error: PlaybackError) {
+    if (this.lastHandledErrorGeneration === this.requestGeneration) return;
+    this.lastHandledErrorGeneration = this.requestGeneration;
     const isDecodeError = error.message.toLowerCase().includes('decode') || 
                           (error.originalError && String(error.originalError).toLowerCase().includes('decode'));
                           
@@ -164,8 +172,11 @@ export class PlaybackManager {
       
       const retrySource = { ...this.lastStreamSource };
       const retryMedia = { ...this.lastMedia };
-      setTimeout(() => {
-        if (this.session) {
+      const generation = this.requestGeneration;
+      this.clearRetryTimer();
+      this.retryTimer = setTimeout(() => {
+        this.retryTimer = null;
+        if (this.session && generation === this.requestGeneration) {
           this.playStream(retrySource, retryMedia, this.session.currentTime);
         }
       }, delay);
@@ -185,17 +196,23 @@ export class PlaybackManager {
     }
 
     this.logger.info(`[PlaybackManager] Preparing stream: ${media.id}`);
+    const generation = ++this.requestGeneration;
+    this.clearRetryTimer();
     
     this.lastStreamSource = stream;
     this.lastMedia = media;
     
     this.session = new PlaybackSession(media, stream, startTimeSeconds);
-    this.setState(PlaybackState.LOADING);
+    this.setState(PlaybackState.RESOLVING);
+    this.setState(PlaybackState.INITIALIZING);
+    this.setState(PlaybackState.PREPARING);
 
     try {
       await this.avplayManager.prepareStream(stream, startTimeSeconds);
+      if (generation !== this.requestGeneration) return;
       this.avplayManager.play();
     } catch (err: any) {
+      if (generation !== this.requestGeneration) return;
       this.handlePlaybackError({
         category: PlaybackErrorCategory.AVPLAY,
         message: err.message || 'Failed to prepare or play stream',
@@ -237,7 +254,9 @@ export class PlaybackManager {
   }
 
   public stop(): void {
-    if (this.session) {
+    this.requestGeneration++;
+    this.clearRetryTimer();
+    if (this.session && this.session.media.mediaType !== 'live') {
         this.historyService.saveProgress(this.session.media.id, this.session.stream.id, this.session.currentTime, this.session.duration);
     }
     this.avplayManager.stop();
@@ -318,6 +337,15 @@ export class PlaybackManager {
     this.stop();
     if (this.avplayListenerCleanup) {
       this.avplayListenerCleanup();
+      this.avplayListenerCleanup = null;
+    }
+    this.avplayManager.destroy();
+  }
+
+  private clearRetryTimer(): void {
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
     }
   }
 }

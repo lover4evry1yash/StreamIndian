@@ -40,22 +40,29 @@ export class IptvProvider implements IStreamProvider {
       return []; // Only handles live TV
     }
 
-    // Example mediaId format: iptv_{playlistId}_{channelId}
-    const [_, playlistId, channelId] = mediaId.split('_');
+    // Identifiers use a delimiter that cannot collide with generated playlist/channel IDs.
+    const prefix = 'iptv:';
+    if (!mediaId.startsWith(prefix)) return [];
+    const separator = mediaId.indexOf(':', prefix.length);
+    if (separator < 0) return [];
+    const playlistId = mediaId.slice(prefix.length, separator);
+    const channelId = mediaId.slice(separator + 1);
 
     if (!playlistId || !channelId) return [];
 
     const channel = await this.iptvManager.getChannelById(channelId);
-    if (!channel) return [];
+    if (!channel || channel.playlistId !== playlistId) return [];
 
     return [{
       id: channel.id,
       title: channel.name,
-      quality: 'HD',
-      format: 'HLS', // Default assumption, can check extension
+      quality: 'Unknown',
+      format: channel.streamUrl.toLowerCase().includes('.m3u8') ? 'HLS'
+        : channel.streamUrl.toLowerCase().includes('.mpd') ? 'DASH'
+          : channel.streamUrl.toLowerCase().includes('.ts') ? 'TS' : 'UNKNOWN',
       providerName: this.name,
       readiness: PlaybackReadiness.DIRECT,
-      isLegalPublicStream: true,
+      isLegalPublicStream: false,
       streamSource: { url: channel.streamUrl }
     }];
   }

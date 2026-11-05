@@ -2,7 +2,7 @@
 
 > Production-Quality, High-Performance Streaming Application for Samsung Tizen Smart TVs.
 
-StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 4.0+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and stream resolution framework with Debrid integration.
+StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 6.5+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and a stream-resolution framework.
 
 ---
 
@@ -82,13 +82,13 @@ UI Layer (React Views & Modals)
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/streamindian/streamindian.git
-   cd streamindian
+   git clone https://github.com/lover4evry1yash/StreamIndian.git
+   cd StreamIndian
    ```
 
 2. **Install Dependencies**:
    ```bash
-   npm install
+   npm ci
    ```
 
 3. **Configure Environment Variables**:
@@ -105,6 +105,7 @@ UI Layer (React Views & Modals)
 
 5. **Type Check & Linting**:
    ```bash
+   npm run type-check
    npm run lint
    ```
 
@@ -117,15 +118,15 @@ UI Layer (React Views & Modals)
 
 ## 📺 Deploying to Samsung Tizen TV
 
-1. Ensure Samsung Tizen Studio is installed and developer mode is enabled on your Samsung Smart TV.
-2. Package the Web Application:
+1. Build the static Tizen application; this target excludes the Node development server:
    ```bash
-   tizen package -t wgt -- .
+   npm run build:tizen
    ```
-3. Install to target Smart TV:
-   ```bash
-   tizen install -n StreamIndian.wgt -t <TV_DEVICE_ID>
-   ```
+   This writes `dist/tizen/index.html`, relative assets, `config.xml`, `.tproject`, and `icon.png`. The existing `npm run build` remains the full-stack build.
+   The minimum declared runtime is Tizen 6.5 (Chromium M85), required by the module-worker implementation. The Tizen build targets Chrome 85 and includes Samsung's Web API bootstrap script; browser development continues to use the HTML video fallback. Samsung's AVPlay display surface and API bootstrap are included only in the Tizen runtime path.
+2. Follow the reproducible PowerShell steps in [TIZEN_PACKAGING.md](./TIZEN_PACKAGING.md) to create a Samsung signing profile, package the WGT, install it, and diagnose runtime failures. A valid certificate profile is required; the project does not generate or include certificates.
+
+3. IPTV VOD and series browsing are available for Xtream providers that return supported stream IDs and container extensions. Catch-up playback is not enabled: providers expose archive metadata inconsistently and no validated URL template is available. Physical Samsung TV playback, remote focus, and codec support still require device validation.
 
 ---
 

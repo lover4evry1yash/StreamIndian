@@ -18,7 +18,9 @@ export interface ShelfContext {
   region?: string;
   language?: string;
   userHistory?: string[]; // Media IDs
+  continueWatching?: string[]; // Incomplete playback IDs
   userFavorites?: string[]; // Media IDs
+  recommendations?: MediaItem[];
   targetMedia?: MediaItem; // For related shelves
 }
 

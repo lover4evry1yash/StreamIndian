@@ -2,18 +2,47 @@
 
 This file records key architectural decisions made in the StreamIndian codebase, documenting context, rationale, and consequences.
 
+## ADR 007: Dedicated Static Tizen Build Output
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: The existing Vite production build also bundles the Node development server, while the Tizen widget manifest points at a static web-application entry point. Tizen needs package-relative asset URLs and must not include the server bundle.
+- **Decision**: Keep the existing full-stack `build` target and add a separate `build:tizen` target that writes the static application, package-relative assets, Tizen manifest, project file, and icon to `dist/tizen`.
+- **Alternatives considered**: Replacing the existing production build would break its Node server output. Maintaining a copied HTML entry would allow the Tizen entry to drift from the application entry.
+- **Consequences**: Tizen packaging uses the generated `dist/tizen` directory. Creating and signing a `.wgt` still requires Samsung Tizen Studio and a configured signing profile.
+
 ---
 
 ## ADR 001: Samsung Tizen OS as Primary Target Platform
 
 - **Status**: Accepted
 - **Date**: 2026-07-21
-- **Context**: The application target is low-spec Samsung Smart TVs (Tizen OS 4.0+). TVs have strict hardware limits (~1.5GB RAM, weak single-core CPU, remote control input only).
+- **Context**: The application targets Samsung Smart TVs with a constrained browser runtime, strict hardware limits, and remote-only input. The checked-in Tizen manifest requires Tizen 5.0.
 - **Decision**: Design all systems for Samsung Tizen first. Desktop browser compatibility exists solely for local development and rapid UI previewing.
 - **Consequences**:
   - All navigation MUST support D-pad spatial input without mouse dependencies.
   - DOM nodes must be virtualized to prevent memory crashes.
   - Video playback must use Samsung AVPlay (`webapis.avplay`) natively on TV.
+
+---
+
+## ADR 007: Tizen 5.0 Minimum Runtime
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: Repository documentation previously claimed Tizen 4.0+, while the Tizen widget manifest already required 5.0. The application uses a modern React and TypeScript build and has no device test evidence for Tizen 4.
+- **Decision**: Declare Tizen 5.0 as the minimum supported platform and keep the README and `public/config.xml` aligned. Tizen 4 compatibility is not claimed until the generated app is tested on that runtime.
+- **Alternatives considered**: Lowering the manifest to 4.0 would preserve the older documentation claim without proving that the app bundle and runtime work there. Leaving both versions inconsistent would make packaging support ambiguous.
+- **Consequences**: Tizen 5.0+ is the declared target; a physical TV or emulator is still needed to validate AVPlay behavior and signing.
+
+## ADR 008: Tizen 6.5 Minimum Runtime
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: Samsung maps Tizen 5.0 to Chromium M63 and Tizen 6.5 to M85. The IPTV parser constructs module workers, a feature introduced after M63. The TV target also uses Samsung Web APIs and AVPlay.
+- **Decision**: Raise the declared minimum to Tizen 6.5 and compile the static TV build for Chrome 85. Add the Samsung Web API bootstrap script and a package CSP for bundled assets plus user-selected API/media origins.
+- **Alternatives considered**: Retaining Tizen 5.0 would require replacing module workers with classic-worker bundles and more extensive compatibility validation. Targeting Tizen 7.0 would unnecessarily exclude Tizen 6.5 devices.
+- **Consequences**: TVs older than the 2022 Tizen 6.5 generation are no longer in the supported target. AVPlay and remote behavior still require emulator or physical TV validation.
 
 ---
 
@@ -75,3 +104,14 @@ This file records key architectural decisions made in the StreamIndian codebase,
 - **Consequences**:
   - `rm -rf .git` is explicitly banned for repository repairs outside of ephemeral sandbox environments.
   - Any future Git corruption in a connected repository must be handled non-destructively using `git fsck`, `git fetch origin`, and `git reset --hard origin/main`, or by restoring missing objects from the remote.
+
+---
+
+## ADR 009: Bounded Xtream Catalog Mapping and Identifier-Only Recents
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: Xtream responses are provider-controlled and may be large or malformed. Recent IPTV history previously duplicated full stream URLs, which can embed provider credentials, into localStorage.
+- **Decision**: Cap and validate Xtream VOD/series records before mapping them into app playback items, and persist only channel/playlist identifiers in recent history. Resolve those identifiers against the local IPTV database when rendering.
+- **Alternatives considered**: Keep raw provider objects in React/localStorage, or cache entire stream URLs in history. Both retain untrusted data and/or duplicate credential-bearing URLs.
+- **Consequences**: Recent IPTV items disappear when their channel is removed or hidden; Xtream entries with unsupported IDs or container extensions are skipped. Catch-up remains disabled until a provider's URL contract is known.

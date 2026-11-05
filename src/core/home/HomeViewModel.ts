@@ -3,6 +3,9 @@ import { Logger } from '../Logger';
 import { MediaItem } from '../../types/tizen';
 import { Shelf, ShelfContext } from '../models/Shelf';
 import { ShelfEngine } from './ShelfArchitecture';
+import { PlaybackHistoryService } from '../playback/services/PlaybackHistoryService';
+import { StreamIndianStorage } from '../storage/LegacyStorage';
+import { RecommendationService } from '../recommendations/RecommendationService';
 
 export class HomeViewModel {
   private homeCatalogService: HomeCatalogService;
@@ -14,10 +17,18 @@ export class HomeViewModel {
   private currentContext: ShelfContext = {
     language: 'All',
     region: 'IN', // Default region
-    userHistory: [] // Future: fetch from user profile
+    userHistory: [],
+    continueWatching: [],
+    userFavorites: [],
+    recommendations: [],
   };
 
-  constructor(homeCatalogService: HomeCatalogService, logger: Logger) {
+  constructor(
+    homeCatalogService: HomeCatalogService,
+    logger: Logger,
+    private historyService?: PlaybackHistoryService,
+    private recommendationService: RecommendationService = new RecommendationService(),
+  ) {
     this.homeCatalogService = homeCatalogService;
     this.logger = logger;
   }
@@ -30,6 +41,21 @@ export class HomeViewModel {
     
     try {
       this.catalog = await this.homeCatalogService.getUnifiedCatalog('All'); // We fetch all to allow shelves to curate
+      const history = await this.historyService?.getAllHistory() ?? [];
+      const watchedIds = history.map((record) => record.mediaId);
+      const continueIds = history.filter((record) => !record.completed && record.currentTime > 0)
+        .map((record) => record.mediaId);
+      const favoriteIds = StreamIndianStorage.getWatchlist();
+      const historyItems = this.catalog.filter((item) => watchedIds.includes(item.id));
+      const favoriteItems = this.catalog.filter((item) => favoriteIds.includes(item.id));
+      this.currentContext.userHistory = watchedIds;
+      this.currentContext.continueWatching = continueIds;
+      this.currentContext.userFavorites = favoriteIds;
+      this.currentContext.recommendations = this.recommendationService.recommend(this.catalog, {
+        history: historyItems,
+        favorites: favoriteItems,
+        preferredLanguages: StreamIndianStorage.getPreferredLanguages(),
+      });
       if (!this.catalog || this.catalog.length === 0) {
         this.logger.warn("HomeViewModel received empty catalog");
       }

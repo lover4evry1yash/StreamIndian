@@ -6,6 +6,9 @@ import { EpgManager } from './EpgManager';
 import { UserDataManager } from './UserDataManager';
 import { NetworkClient } from '../NetworkClient';
 import { Logger } from '../Logger';
+import { createId } from '../createId';
+
+const MAX_IPTV_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 export class IptvManager {
   private parserEngine: ParserEngine;
@@ -26,7 +29,7 @@ export class IptvManager {
   public async addPlaylist(playlist: Omit<IptvPlaylist, 'id' | 'lastUpdated' | 'refreshFailures' | 'channelCount'>): Promise<IptvPlaylist> {
     const newPlaylist: IptvPlaylist = {
       ...playlist,
-      id: crypto.randomUUID(),
+      id: createId(),
       lastUpdated: 0,
       refreshFailures: 0,
       channelCount: 0
@@ -55,27 +58,31 @@ export class IptvManager {
     this.logger.info(`Refreshing playlist: ${playlist.name}`);
 
     let channels: IptvChannel[] = [];
-    let isSuccess = false;
-
     try {
       if (playlist.type === 'xtream') {
         const authed = await this.xtreamClient.authenticate(playlist);
         if (!authed) throw new Error('Xtream authentication failed');
-        channels = await this.xtreamClient.fetchLiveStreams(playlist);
+        const categories = await this.xtreamClient.fetchCategories(playlist, 'live');
+        const categoryNames = new Map(categories.map((category) => [String(category.category_id), String(category.category_name ?? '')]));
+        channels = (await this.xtreamClient.fetchLiveStreams(playlist)).map((channel) => ({
+          ...channel,
+          group: categoryNames.get(channel.group) || channel.group || 'Uncategorized',
+        }));
       } else if (playlist.type === 'm3u') {
         let content = localFileContent;
         if (!content && playlist.url) {
-          const response = await this.network.fetch(playlist.url);
-          content = await response.text();
+          content = await this.network.getText(playlist.url, { maxResponseBytes: MAX_IPTV_RESPONSE_BYTES });
         }
         if (!content) throw new Error('No M3U content available');
         channels = await this.parserEngine.parseM3u(content, playlistId);
       }
 
-      if (channels.length > 0) {
-        await iptvDb.transaction('rw', iptvDb.channels, async () => {
-          const existing = await iptvDb.channels.where('playlistId').equals(playlistId).toArray();
-          const existingMap = new Map(existing.map(c => [c.streamUrl, c])); 
+      if (channels.length === 0) throw new Error('Playlist returned no live channels; existing channel data was preserved');
+      await iptvDb.transaction('rw', iptvDb.channels, async () => {
+          const existingMap = new Map<string, Pick<IptvChannel, 'isFavorite' | 'isHidden'>>();
+          await iptvDb.channels.where('playlistId').equals(playlistId).each((channel) => {
+            existingMap.set(channel.streamUrl, { isFavorite: channel.isFavorite, isHidden: channel.isHidden });
+          });
 
           const newChannels = channels.map(c => {
             const match = existingMap.get(c.streamUrl);
@@ -88,13 +95,11 @@ export class IptvManager {
 
           await iptvDb.channels.where('playlistId').equals(playlistId).delete();
           await iptvDb.channels.bulkPut(newChannels);
-        });
-      }
+      });
 
       if (playlist.epgUrl) {
          try {
-            const response = await this.network.fetch(playlist.epgUrl);
-            const content = await response.text();
+            const content = await this.network.getText(playlist.epgUrl, { maxResponseBytes: MAX_IPTV_RESPONSE_BYTES });
             const programs = await this.parserEngine.parseXmltv(content, playlistId);
             await this.epgManager.clearEpg(playlistId);
             await this.epgManager.savePrograms(programs);
@@ -103,7 +108,6 @@ export class IptvManager {
          }
       }
 
-      isSuccess = true;
       await iptvDb.playlists.update(playlistId, { 
         lastUpdated: Date.now(),
         refreshFailures: 0,
@@ -125,18 +129,35 @@ export class IptvManager {
   }
 
   public async getChannelsByGroup(playlistId: string, group: string, limit = 50, offset = 0): Promise<IptvChannel[]> {
+    const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+    const safeOffset = Math.max(0, Math.floor(offset));
     return iptvDb.channels
       .where('[playlistId+group]')
       .equals([playlistId, group])
-      .offset(offset)
-      .limit(limit)
+      .filter((channel) => !channel.isHidden)
+      .offset(safeOffset)
+      .limit(safeLimit)
       .toArray();
   }
 
-  public async searchChannels(query: string, limit = 50): Promise<IptvChannel[]> {
+  public async getChannelGroups(playlistId: string): Promise<string[]> {
+    const groups = new Set<string>();
+    await iptvDb.channels.where('playlistId').equals(playlistId).each((channel) => {
+      if (!channel.isHidden && groups.size < 1000) groups.add(channel.group || 'Uncategorized');
+    });
+    return [...groups].sort((left, right) => left.localeCompare(right));
+  }
+
+  public async searchChannels(query: string, limit = 50, playlistId?: string): Promise<IptvChannel[]> {
     const lowerQuery = query.toLowerCase();
-    const all = await iptvDb.channels.toArray();
-    return all.filter(c => c.name.toLowerCase().includes(lowerQuery)).slice(0, limit);
+    const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+    const channels = playlistId
+      ? iptvDb.channels.where('playlistId').equals(playlistId)
+      : iptvDb.channels.toCollection();
+    return channels
+      .filter((channel) => !channel.isHidden && channel.name.toLowerCase().includes(lowerQuery))
+      .limit(safeLimit)
+      .toArray();
   }
 
   public async getDiagnostics(playlistId: string) {

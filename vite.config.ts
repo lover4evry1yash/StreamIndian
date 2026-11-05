@@ -1,18 +1,46 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import postcssColorMix from '@csstools/postcss-color-mix-function';
+import postcssOklab from '@csstools/postcss-oklab-function';
+import postcssCustomProperties from 'postcss-custom-properties';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   return {
-    plugins: [react(), tailwindcss()],
+    base: mode === 'tizen' ? './' : '/',
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'tizen-webapis-bootstrap',
+        transformIndexHtml(html) {
+          if (mode !== 'tizen') return html;
+          return html.replace(
+            '</head>',
+            '    <script type="text/javascript" src="$WEBAPIS/webapis/webapis.js"></script>\n  </head>'
+          );
+        },
+      },
+    ],
+    css: mode === 'tizen'
+      ? {
+          postcss: {
+            plugins: [
+              postcssCustomProperties({ preserve: true }),
+              postcssColorMix({ preserve: true }),
+              postcssOklab({ preserve: true }),
+            ],
+          },
+        }
+      : undefined,
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
     build: {
-      target: 'chrome69',
+      target: mode === 'tizen' ? 'chrome85' : 'chrome69',
       rollupOptions: {
         output: {
           manualChunks(id) {
