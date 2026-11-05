@@ -82,7 +82,7 @@ StreamIndian learns from, selects, and adapts patterns from open-source media ce
 | **Settings** | SCAFFOLDED | CODE-VERIFIED | UI present, backend integration partial. |
 | **IPTV** | SCAFFOLDED | CODE-VERIFIED | Workers scaffolded, UI placeholder present. |
 | **Image Management / Cache** | PARTIALLY IMPLEMENTED | CODE-VERIFIED | `ArtworkManager` uses LRU. Native `Image()` prevents aborts (P0 starvation). |
-| **Samsung Packaging** | PLANNED | UNVERIFIED | Tizen SDK `.wgt` creation scripts not verified in repo. |
+| **Samsung Packaging** | PARTIALLY IMPLEMENTED | BUILD-VERIFIED | Dedicated static `dist/tizen` build and package smoke test; signed `.wgt` creation still requires Tizen Studio and a configured profile. |
 | **Hardware Validation** | PLANNED | TV-HARDWARE-UNVERIFIED | Needs physical TV testing for memory limits and decoder stability. |
 
 ## 10. Mandatory Output → Reassessment → Plan Loop
