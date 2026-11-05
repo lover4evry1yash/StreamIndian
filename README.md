@@ -2,7 +2,7 @@
 
 > Production-Quality, High-Performance Streaming Application for Samsung Tizen Smart TVs.
 
-StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 4.0+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and stream resolution framework with Debrid integration.
+StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 5.0+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and a stream-resolution framework.
 
 ---
 
@@ -82,13 +82,13 @@ UI Layer (React Views & Modals)
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/streamindian/streamindian.git
-   cd streamindian
+   git clone https://github.com/lover4evry1yash/StreamIndian.git
+   cd StreamIndian
    ```
 
 2. **Install Dependencies**:
    ```bash
-   npm install
+   npm ci
    ```
 
 3. **Configure Environment Variables**:
@@ -105,6 +105,7 @@ UI Layer (React Views & Modals)
 
 5. **Type Check & Linting**:
    ```bash
+   npm run type-check
    npm run lint
    ```
 
@@ -117,12 +118,18 @@ UI Layer (React Views & Modals)
 
 ## 📺 Deploying to Samsung Tizen TV
 
-1. Ensure Samsung Tizen Studio is installed and developer mode is enabled on your Samsung Smart TV.
-2. Package the Web Application:
+1. Build the static Tizen application; this target excludes the Node development server:
    ```bash
-   tizen package -t wgt -- .
+   npm run build:tizen
    ```
-3. Install to target Smart TV:
+   This writes `dist/tizen/index.html`, relative assets, `config.xml`, `.tproject`, and `icon.png`. The existing `npm run build` remains the full-stack build.
+2. Ensure Samsung Tizen Studio is installed and a signing profile is configured. In PowerShell, package from the generated Tizen project directory:
+   ```powershell
+   Push-Location .\dist\tizen
+   tizen package -t wgt -- .
+   Pop-Location
+   ```
+3. Install the resulting widget to a configured TV or emulator:
    ```bash
    tizen install -n StreamIndian.wgt -t <TV_DEVICE_ID>
    ```

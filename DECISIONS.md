@@ -2,6 +2,15 @@
 
 This file records key architectural decisions made in the StreamIndian codebase, documenting context, rationale, and consequences.
 
+## ADR 007: Dedicated Static Tizen Build Output
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: The existing Vite production build also bundles the Node development server, while the Tizen widget manifest points at a static web-application entry point. Tizen needs package-relative asset URLs and must not include the server bundle.
+- **Decision**: Keep the existing full-stack `build` target and add a separate `build:tizen` target that writes the static application, package-relative assets, Tizen manifest, project file, and icon to `dist/tizen`.
+- **Alternatives considered**: Replacing the existing production build would break its Node server output. Maintaining a copied HTML entry would allow the Tizen entry to drift from the application entry.
+- **Consequences**: Tizen packaging uses the generated `dist/tizen` directory. Creating and signing a `.wgt` still requires Samsung Tizen Studio and a configured signing profile.
+
 ---
 
 ## ADR 001: Samsung Tizen OS as Primary Target Platform
