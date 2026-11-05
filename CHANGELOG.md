@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 - Added a dedicated static Tizen build target with relative asset URLs and a packaged web-app smoke test.
 - Added explicit package identity/version and a type-check command; aligned the Tizen manifest identity with the canonical GitHub repository.
+- Added an injectable AVPlay adapter boundary with async prepare timeout, abort and stale-session protection, explicit playback startup states, and focused runtime tests.
+- Added deterministic bootstrap/lifecycle teardown, typed event unsubscribe handles, safe configuration snapshots, and a Tizen 5.0 minimum-runtime decision aligned with the widget manifest.
 - Created official open-source documentation suite (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`, `ROADMAP.md`, `DECISIONS.md`, `LICENSE`).
 - Moved engineering audit reports into structured `docs/reports/` directory.
 - Reorganized maintenance, fix, and patch scripts into modular `scripts/` directory structure (`scripts/fixes/`, `scripts/patches/`, `scripts/utilities/`).

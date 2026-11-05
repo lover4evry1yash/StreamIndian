@@ -139,11 +139,11 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({
       />
 
       {/* Buffering Indicator */}
-      {(playbackState === PlaybackState.LOADING || playbackState === PlaybackState.BUFFERING) && (
+      {([PlaybackState.RESOLVING, PlaybackState.INITIALIZING, PlaybackState.PREPARING, PlaybackState.LOADING, PlaybackState.BUFFERING].includes(playbackState)) && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-3">
           <div className="w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin" />
           <p className="text-indigo-400 font-bold text-sm tracking-wider">
-            {playbackState === PlaybackState.LOADING ? 'Loading Stream...' : `AVPlay Buffering (${bufferingPercentage}%)...`}
+            {playbackState !== PlaybackState.BUFFERING ? 'Loading Stream...' : `AVPlay Buffering (${bufferingPercentage}%)...`}
           </p>
         </div>
       )}

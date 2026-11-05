@@ -13,6 +13,7 @@ export class NavigationManager {
   public focusEngine: FocusEngine;
   private eventBus: EventBus;
   private lifecycle: AppLifecycle;
+  private removeKeyListener: (() => void) | null = null;
 
   constructor(eventBus: EventBus, lifecycle: AppLifecycle) {
     this.eventBus = eventBus;
@@ -26,7 +27,7 @@ export class NavigationManager {
   }
 
   private registerKeyListeners(): void {
-    tizenKeyController.addListener((action: string, e: KeyboardEvent) => {
+    this.removeKeyListener = tizenKeyController.addListener((action: string, e: KeyboardEvent) => {
       if (['KEY_UP', 'KEY_DOWN', 'KEY_LEFT', 'KEY_RIGHT', 'KEY_ENTER'].includes(action)) {
         e.preventDefault();
       }
@@ -38,6 +39,11 @@ export class NavigationManager {
 
       this.focusEngine.handleKeyEvent(action);
     });
+  }
+
+  public destroy(): void {
+    this.removeKeyListener?.();
+    this.removeKeyListener = null;
   }
 
   public openRoute(routeId: string, params?: Record<string, any>, addToBackStack: boolean = true): void {

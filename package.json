@@ -13,7 +13,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
-    "test:tizen": "tsx --test tests/TizenBuild.test.ts"
+    "test:tizen": "tsx --test tests/TizenBuild.test.ts",
+    "test:core": "tsx --test src/core/avplay.test.ts src/core/runtime.test.ts src/core/Bootstrap.profile.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

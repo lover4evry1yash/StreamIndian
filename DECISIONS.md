@@ -17,12 +17,23 @@ This file records key architectural decisions made in the StreamIndian codebase,
 
 - **Status**: Accepted
 - **Date**: 2026-07-21
-- **Context**: The application target is low-spec Samsung Smart TVs (Tizen OS 4.0+). TVs have strict hardware limits (~1.5GB RAM, weak single-core CPU, remote control input only).
+- **Context**: The application targets Samsung Smart TVs with a constrained browser runtime, strict hardware limits, and remote-only input. The checked-in Tizen manifest requires Tizen 5.0.
 - **Decision**: Design all systems for Samsung Tizen first. Desktop browser compatibility exists solely for local development and rapid UI previewing.
 - **Consequences**:
   - All navigation MUST support D-pad spatial input without mouse dependencies.
   - DOM nodes must be virtualized to prevent memory crashes.
   - Video playback must use Samsung AVPlay (`webapis.avplay`) natively on TV.
+
+---
+
+## ADR 007: Tizen 5.0 Minimum Runtime
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: Repository documentation previously claimed Tizen 4.0+, while the Tizen widget manifest already required 5.0. The application uses a modern React and TypeScript build and has no device test evidence for Tizen 4.
+- **Decision**: Declare Tizen 5.0 as the minimum supported platform and keep the README and `public/config.xml` aligned. Tizen 4 compatibility is not claimed until the generated app is tested on that runtime.
+- **Alternatives considered**: Lowering the manifest to 4.0 would preserve the older documentation claim without proving that the app bundle and runtime work there. Leaving both versions inconsistent would make packaging support ambiguous.
+- **Consequences**: Tizen 5.0+ is the declared target; a physical TV or emulator is still needed to validate AVPlay behavior and signing.
 
 ---
 

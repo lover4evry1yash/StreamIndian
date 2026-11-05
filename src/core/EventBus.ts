@@ -7,7 +7,8 @@ import { PlaybackStateEvent, PlaybackProgressEvent, PlaybackBufferEvent, Playbac
 import { AppSettings } from './storage/SettingsManager';
 import { MediaDetails } from './details/types';
 
-export type EventHandler<T = any> = (data: T) => void;
+export type EventHandler<T = unknown> = (data: T) => void;
+export type EventErrorHandler = (error: unknown, event: keyof EventMap) => void;
 
 export type EventMap = {
   'ROUTE_CHANGED': Route;
@@ -58,41 +59,46 @@ export type EventMap = {
 };
 
 export class EventBus {
-  private listeners: Map<keyof EventMap, EventHandler[]> = new Map();
+  private listeners: Map<keyof EventMap, Set<EventHandler>> = new Map();
 
-  public on<K extends keyof EventMap>(event: K, handler: EventHandler<EventMap[K]>): void {
+  constructor(private readonly onHandlerError: EventErrorHandler = (error, event) => {
+    console.error(`[EventBus] Handler failed for ${String(event)}`, error);
+  }) {}
+
+  public on<K extends keyof EventMap>(event: K, handler: EventHandler<EventMap[K]>): () => void {
     if (!this.listeners.has(event)) {
-      this.listeners.set(event, []);
+      this.listeners.set(event, new Set());
     }
-    this.listeners.get(event)!.push(handler as EventHandler);
+    this.listeners.get(event)!.add(handler as EventHandler);
+    return () => this.off(event, handler);
   }
 
   public off<K extends keyof EventMap>(event: K, handler: EventHandler<EventMap[K]>): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      this.listeners.set(
-        event,
-        handlers.filter((h) => h !== handler)
-      );
+      handlers.delete(handler as EventHandler);
+      if (handlers.size === 0) this.listeners.delete(event);
     }
   }
 
-  public once<K extends keyof EventMap>(event: K, handler: EventHandler<EventMap[K]>): void {
+  public once<K extends keyof EventMap>(event: K, handler: EventHandler<EventMap[K]>): () => void {
+    let unsubscribe = () => {};
     const onceWrapper = (data: EventMap[K]) => {
-      this.off(event, onceWrapper);
+      unsubscribe();
       handler(data);
     };
-    this.on(event, onceWrapper);
+    unsubscribe = this.on(event, onceWrapper);
+    return unsubscribe;
   }
 
   public emit<K extends keyof EventMap>(event: K, data?: EventMap[K]): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      handlers.forEach((handler) => {
+      [...handlers].forEach((handler) => {
         try {
           handler(data);
         } catch (error) {
-          console.error(`[EventBus] Error in handler for event ${String(event)}:`, error);
+          this.onHandlerError(error, event);
         }
       });
     }

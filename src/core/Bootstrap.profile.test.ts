@@ -1,5 +1,7 @@
+import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Bootstrap } from './Bootstrap';
+import { container } from './ServiceContainer';
 
 describe('Bootstrap Profiling', () => {
   it('measures Bootstrap staged init times', async () => {
@@ -16,20 +18,23 @@ describe('Bootstrap Profiling', () => {
       addEventListener: () => {},
       removeEventListener: () => {}
     };
-    const t0 = performance.now();
-    await Bootstrap.initializeCritical();
-    const t1 = performance.now();
-    await Bootstrap.initializeIdle();
-    const t2 = performance.now();
-    await Bootstrap.initializeOnDemand('search');
-    const t3 = performance.now();
-    await Bootstrap.initializeOnDemand('details');
-    const t4 = performance.now();
-    
-    console.log(`[PROFILE] Critical: ${(t1 - t0).toFixed(2)}ms`);
-    console.log(`[PROFILE] Idle: ${(t2 - t1).toFixed(2)}ms`);
-    console.log(`[PROFILE] OnDemand Search: ${(t3 - t2).toFixed(2)}ms`);
-    console.log(`[PROFILE] OnDemand Details: ${(t4 - t3).toFixed(2)}ms`);
-    console.log(`[PROFILE] Total: ${(t4 - t0).toFixed(2)}ms`);
+    try {
+      await Promise.all([Bootstrap.initializeCritical(), Bootstrap.initializeCritical()]);
+      assert.ok(container.resolve('Config'));
+      assert.ok(container.resolve('EventBus'));
+      assert.ok(container.resolve('PlaybackManager'));
+      const eventBus = container.resolve('EventBus');
+      await Promise.all([Bootstrap.initializeCritical(), Bootstrap.initializeCritical()]);
+      assert.strictEqual(container.resolve('EventBus'), eventBus);
+      await Bootstrap.initializeIdle();
+      await Bootstrap.initializeOnDemand('search');
+      await Bootstrap.initializeOnDemand('details');
+      assert.ok(container.resolve('SearchViewModel'));
+      assert.ok(container.resolve('MediaDetailsViewModel'));
+      assert.ok(container.resolve('StreamViewModel'));
+    } finally {
+      await Bootstrap.shutdown();
+    }
+    assert.throws(() => container.resolve('Config'), /not found/);
   });
 });
