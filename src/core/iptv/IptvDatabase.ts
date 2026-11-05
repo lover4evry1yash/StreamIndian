@@ -14,6 +14,12 @@ export class IptvDatabase extends Dexie {
       channels: 'id, playlistId, group, tvgId, streamId, isFavorite, [playlistId+group]',
       programs: 'id, playlistId, tvgId, startTime, endTime, [tvgId+startTime]'
     });
+
+    this.version(2).stores({
+      playlists: 'id, name, type, autoUpdate',
+      channels: 'id, playlistId, group, tvgId, streamId, isFavorite, [playlistId+group]',
+      programs: 'id, playlistId, tvgId, startTime, endTime, [tvgId+startTime], [playlistId+tvgId+startTime]'
+    });
   }
 }
 

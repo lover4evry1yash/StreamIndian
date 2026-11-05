@@ -78,9 +78,15 @@ The AVPlay prepare operation is asynchronous and session-scoped. Timeout, abort,
 
 `npm run test:core` covers safe configuration defaults, event subscription/error handling, lifecycle teardown, AVPlay state transitions, errors, timeout, cancellation, stale callbacks, and repeated stop. The full Node test suite and production/Tizen builds remain separate checks. Passing these tests does not verify codec support, playback surfaces, audio output, or performance on a Samsung TV.
 
+## IPTV and Recommendations
+
+IPTV playlists, channels, and programmes are stored in the local Dexie database. M3U and XMLTV parsing is shared between module workers and a main-thread fallback, with input and output bounds. Channel search, group pages, favorites, recent-channel storage, and EPG range queries are bounded; guide queries can be scoped to a playlist to avoid cross-provider programme collisions. Playlist refresh replaces channel rows transactionally and preserves prior rows when the source returns no channels. Xtream credentials remain in local application storage and are sent to the provider API; IPTV provider URLs and browser CORS behavior vary and require real-provider validation.
+
+`RecommendationService` ranks only items already present in the metadata catalog. It combines genre, cast, language, and content-type affinity from local viewing history, watchlist, and preferences, with rating/trending signals used only as tie-breakers. It has no inference-service dependency and returns no recommendations without a personal metadata signal. Continue-watching uses incomplete local playback history.
+
 ## Platform Support
 
-Tizen 5.0 is the minimum declared runtime because it matches `public/config.xml`; Tizen 4 compatibility has not been verified. Device packaging, signing, AVPlay tracks, buffering, and playback still require Tizen Studio plus emulator or physical TV validation.
+Tizen 6.5 (Chromium M85) is the minimum declared runtime. The IPTV parser uses module workers, which set the minimum above Tizen 5.0 (Chromium M63). The Tizen build targets Chrome 85 and bootstraps Samsung Web APIs before the application module. Device packaging, signing, AVPlay tracks, buffering, and playback still require Tizen Studio plus emulator or physical TV validation.
 
 ## Bootstrap
 

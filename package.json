@@ -12,9 +12,11 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "pretest": "npm run build:tizen",
     "test": "tsx --test tests/**/*.test.ts",
     "test:tizen": "tsx --test tests/TizenBuild.test.ts",
-    "test:core": "tsx --test src/core/avplay.test.ts src/core/runtime.test.ts src/core/Bootstrap.profile.test.ts"
+    "test:core": "tsx --test src/core/avplay.test.ts src/core/createId.test.ts src/core/home/HomeViewModel.test.ts src/core/iptv/parsers.test.ts src/core/playback/services/PlaybackHistoryService.test.ts src/core/recommendations/RecommendationService.test.ts src/core/runtime.test.ts src/core/Bootstrap.profile.test.ts",
+    "test:iptv": "tsx --test src/core/iptv/parsers.test.ts src/core/iptv/IptvManager.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -28,10 +30,11 @@
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "react-dom": "^19.0.1"
   },
   "devDependencies": {
+    "@csstools/postcss-color-mix-function": "^4.0.16",
+    "@csstools/postcss-oklab-function": "^5.0.15",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
@@ -39,10 +42,14 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "playwright": "^1.61.1",
+    "postcss-custom-properties": "^15.0.4",
     "puppeteer": "^25.4.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.4.5"
+  },
+  "overrides": {
+    "qs": "6.16.2"
   }
 }

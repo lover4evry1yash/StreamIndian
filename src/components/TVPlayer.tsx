@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MediaItem, StreamSource } from '../types/tizen';
-import { usePlaybackManager, useEventBus, usePlayerOverlayViewModel } from '../context/ServiceContext';
+import { usePlaybackManager, useAVPlayManager, useEventBus, usePlayerOverlayViewModel } from '../context/ServiceContext';
 import { PlaybackState, PlaybackError } from '../core/playback';
 import { FocusItem } from './FocusItem';
 import { useSpatialFocus } from './SpatialFocusContainer';
@@ -26,6 +26,8 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({
   const osdTimerRef = useRef<NodeJS.Timeout>();
 
   const playbackManager = usePlaybackManager();
+  const avplayManager = useAVPlayManager();
+  const isNativeAVPlay = avplayManager.isAVPlayAvailable();
   const eventBus = useEventBus();
   const viewModel = usePlayerOverlayViewModel();
   
@@ -130,10 +132,18 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({
       onMouseMove={resetOSDTimer}
       onClick={resetOSDTimer}
     >
-      {/* Native AVPlay Video Stage */}
+      {/* Samsung requires an application/avplayer object to host its native playback surface. */}
+      {isNativeAVPlay && (
+        <object
+          aria-label="Samsung AVPlay video surface"
+          className="absolute inset-0 h-full w-full"
+          data-testid="samsung-avplay-surface"
+          type="application/avplayer"
+        />
+      )}
       <video
         ref={videoRef}
-        className="w-full h-full object-contain"
+        className={isNativeAVPlay ? 'hidden' : 'w-full h-full object-contain'}
         autoPlay
         playsInline
       />

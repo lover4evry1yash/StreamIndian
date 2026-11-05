@@ -231,7 +231,7 @@ export class Bootstrap {
       const homeCatalogService = new HomeCatalogService(metadataManager, logger);
       container.register('HomeCatalogService', homeCatalogService);
 
-      const homeViewModel = new HomeViewModel(homeCatalogService, logger);
+      const homeViewModel = new HomeViewModel(homeCatalogService, logger, playbackManager.historyService);
       container.register('HomeViewModel', homeViewModel);
 
       this.phase1Time = performance.now() - start;

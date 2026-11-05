@@ -1,0 +1,6 @@
+#EXTM3U
+#EXTINF:-1 group-title="News, World" tvg-logo="https://images.example.test/news.png" tvg-id="synthetic.news",Synthetic News, West
+#EXTVLCOPT:http-user-agent=ExamplePlayer
+https://media.example.test/live/news.m3u8
+#EXTINF:-1 tvg-name='Synthetic Sports' tvg-id='synthetic.sports' group-title='Sports',Synthetic Sports
+https://media.example.test/live/sports.m3u8

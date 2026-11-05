@@ -35,6 +35,15 @@ This file records key architectural decisions made in the StreamIndian codebase,
 - **Alternatives considered**: Lowering the manifest to 4.0 would preserve the older documentation claim without proving that the app bundle and runtime work there. Leaving both versions inconsistent would make packaging support ambiguous.
 - **Consequences**: Tizen 5.0+ is the declared target; a physical TV or emulator is still needed to validate AVPlay behavior and signing.
 
+## ADR 008: Tizen 6.5 Minimum Runtime
+
+- **Status**: Accepted
+- **Date**: 2026-11-06
+- **Context**: Samsung maps Tizen 5.0 to Chromium M63 and Tizen 6.5 to M85. The IPTV parser constructs module workers, a feature introduced after M63. The TV target also uses Samsung Web APIs and AVPlay.
+- **Decision**: Raise the declared minimum to Tizen 6.5 and compile the static TV build for Chrome 85. Add the Samsung Web API bootstrap script and a package CSP for bundled assets plus user-selected API/media origins.
+- **Alternatives considered**: Retaining Tizen 5.0 would require replacing module workers with classic-worker bundles and more extensive compatibility validation. Targeting Tizen 7.0 would unnecessarily exclude Tizen 6.5 devices.
+- **Consequences**: TVs older than the 2022 Tizen 6.5 generation are no longer in the supported target. AVPlay and remote behavior still require emulator or physical TV validation.
+
 ---
 
 ## ADR 002: Layered 5-Tier Downward Architecture

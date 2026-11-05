@@ -6,9 +6,8 @@ export class XtreamClient {
   constructor(private network: NetworkClient, private logger: Logger) {}
 
   public async authenticate(playlist: IptvPlaylist): Promise<boolean> {
-    if (!playlist.url || !playlist.username || !playlist.password) return false;
-    
-    const url = `${playlist.url}/player_api.php?username=${playlist.username}&password=${playlist.password}`;
+    const url = this.buildPlayerApiUrl(playlist);
+    if (!url) return false;
     try {
       const data = await this.network.getJson<any>(url);
       return data && data.user_info && data.user_info.auth === 1;
@@ -19,13 +18,12 @@ export class XtreamClient {
   }
 
   public async fetchCategories(playlist: IptvPlaylist, type: 'live' | 'vod' | 'series' = 'live'): Promise<any[]> {
-    if (!playlist.url || !playlist.username || !playlist.password) return [];
-    
     let action = 'get_live_categories';
     if (type === 'vod') action = 'get_vod_categories';
     else if (type === 'series') action = 'get_series_categories';
 
-    const url = `${playlist.url}/player_api.php?username=${playlist.username}&password=${playlist.password}&action=${action}`;
+    const url = this.buildPlayerApiUrl(playlist, { action });
+    if (!url) return [];
     try {
       const data = await this.network.getJson<any[]>(url);
       return Array.isArray(data) ? data : [];
@@ -36,12 +34,11 @@ export class XtreamClient {
   }
 
   public async fetchLiveStreams(playlist: IptvPlaylist, categoryId?: string): Promise<IptvChannel[]> {
-    if (!playlist.url || !playlist.username || !playlist.password) return [];
-
-    let url = `${playlist.url}/player_api.php?username=${playlist.username}&password=${playlist.password}&action=get_live_streams`;
-    if (categoryId) {
-      url += `&category_id=${categoryId}`;
-    }
+    const url = this.buildPlayerApiUrl(playlist, {
+      action: 'get_live_streams',
+      ...(categoryId ? { category_id: categoryId } : {}),
+    });
+    if (!url) return [];
 
     try {
       const data = await this.network.getJson<any[]>(url);
@@ -51,9 +48,9 @@ export class XtreamClient {
         id: `xtream_live_${playlist.id}_${stream.stream_id}`,
         playlistId: playlist.id,
         name: stream.name,
-        streamUrl: `${playlist.url}/${playlist.username}/${playlist.password}/${stream.stream_id}`,
+        streamUrl: `${playlist.url!.replace(/\/+$/, '')}/${encodeURIComponent(playlist.username!)}/${encodeURIComponent(playlist.password!)}/${encodeURIComponent(String(stream.stream_id))}`,
         logoUrl: stream.stream_icon,
-        group: categoryId || 'Uncategorized', 
+        group: stream.category_id == null ? (categoryId || 'Uncategorized') : String(stream.category_id),
         tvgId: stream.epg_channel_id,
         streamId: stream.stream_id,
         isFavorite: false,
@@ -68,12 +65,11 @@ export class XtreamClient {
   }
 
   public async fetchVodStreams(playlist: IptvPlaylist, categoryId?: string): Promise<any[]> {
-    if (!playlist.url || !playlist.username || !playlist.password) return [];
-
-    let url = `${playlist.url}/player_api.php?username=${playlist.username}&password=${playlist.password}&action=get_vod_streams`;
-    if (categoryId) {
-      url += `&category_id=${categoryId}`;
-    }
+    const url = this.buildPlayerApiUrl(playlist, {
+      action: 'get_vod_streams',
+      ...(categoryId ? { category_id: categoryId } : {}),
+    });
+    if (!url) return [];
 
     try {
       const data = await this.network.getJson<any[]>(url);
@@ -85,12 +81,11 @@ export class XtreamClient {
   }
 
   public async fetchSeries(playlist: IptvPlaylist, categoryId?: string): Promise<any[]> {
-    if (!playlist.url || !playlist.username || !playlist.password) return [];
-
-    let url = `${playlist.url}/player_api.php?username=${playlist.username}&password=${playlist.password}&action=get_series`;
-    if (categoryId) {
-      url += `&category_id=${categoryId}`;
-    }
+    const url = this.buildPlayerApiUrl(playlist, {
+      action: 'get_series',
+      ...(categoryId ? { category_id: categoryId } : {}),
+    });
+    if (!url) return [];
 
     try {
       const data = await this.network.getJson<any[]>(url);
@@ -99,5 +94,16 @@ export class XtreamClient {
       this.logger.error('Xtream fetchSeries failed', e);
       return [];
     }
+  }
+
+  private buildPlayerApiUrl(playlist: IptvPlaylist, extra: Record<string, string> = {}): string | null {
+    if (!playlist.url || !playlist.username || !playlist.password) return null;
+    const baseUrl = playlist.url.replace(/\/+$/, '');
+    const parameters = new URLSearchParams({
+      username: playlist.username,
+      password: playlist.password,
+      ...extra,
+    });
+    return `${baseUrl}/player_api.php?${parameters.toString()}`;
   }
 }

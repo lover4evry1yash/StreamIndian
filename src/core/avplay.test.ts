@@ -20,9 +20,10 @@ function createNativeApi() {
   let callbacks: Record<string, (...args: any[]) => void> = {};
   const preparations: Array<{ success: () => void; failure: (error: unknown) => void }> = [];
   const calls: string[] = [];
+  const displayRects: number[][] = [];
   const api = {
     open: () => calls.push('open'),
-    setDisplayRect: () => calls.push('rect'),
+    setDisplayRect: (...rect: number[]) => { calls.push('rect'); displayRects.push(rect); },
     setStreamingProperty: () => calls.push('streaming-property'),
     setListener: (listener: Record<string, (...args: any[]) => void>) => { callbacks = listener; },
     prepareAsync: (success: () => void, failure: (error: unknown) => void) => {
@@ -42,6 +43,7 @@ function createNativeApi() {
   return {
     api,
     calls,
+    displayRects,
     succeed: (index = preparations.length - 1) => preparations[index]?.success(),
     fail: (error: unknown, index = preparations.length - 1) => preparations[index]?.failure(error),
     emit: (name: string, ...args: any[]) => callbacks[name]?.(...args),
@@ -72,6 +74,7 @@ test('AVPlay adapter prepares, transitions, reports tracks, controls volume, and
     assert.equal(manager.getState(), AVPlayPlayerState.PREPARED);
     assert.equal(manager.getPlaybackInfo().duration, 120);
     assert.equal(manager.getPlaybackInfo().currentTime, 5);
+    assert.deepEqual(native.displayRects[0], [0, 0, 1920, 1080]);
     assert.equal(manager.getAudioTracks()[0]?.language, 'en');
     manager.setVolume(0.5);
     manager.seek(10);

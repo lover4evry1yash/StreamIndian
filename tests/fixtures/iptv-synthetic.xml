@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="synthetic.news"><display-name>Synthetic News</display-name></channel>
+  <programme channel="synthetic.news" stop="20261106120000 +0530" start="20261106110000 +0530">
+    <title lang="en">Synthetic &amp; Local News</title>
+    <desc><![CDATA[An example programme < description.]]></desc>
+  </programme>
+  <programme start="20261106130000 -0500" channel="synthetic.news" stop="20261106140000 -0500">
+    <title>Afternoon &quot;Update&quot;</title>
+  </programme>
+</tv>

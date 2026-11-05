@@ -191,8 +191,8 @@ export class AVPlayManager implements AVPlayAdapter {
           if (!avplay) throw new Error('Samsung AVPlay is unavailable');
           avplay.open(stream.url);
 
-          // Set display rectangle for Tizen TV AVPlay overlay
-          avplay.setDisplayRect(0, 0, window.innerWidth, window.innerHeight);
+          // Samsung measures AVPlay output in a 1920x1080 coordinate space.
+          avplay.setDisplayRect(0, 0, 1920, 1080);
 
           try {
              if (stream.format === 'HLS' || stream.format === 'DASH' || stream.url.includes('.m3u8') || stream.url.includes('.mpd')) {

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="https://github.com/lover4evry1yash/StreamIndian" version="1.0.0" viewmodes="fullscreen">
-    <tizen:application id="9WwEmaC3j7.StreamIndian" package="9WwEmaC3j7" required_version="5.0"/>
+    <tizen:application id="9WwEmaC3j7.StreamIndian" package="9WwEmaC3j7" required_version="6.5"/>
     <content src="index.html"/>
     <feature name="http://tizen.org/feature/screen.size.all"/>
     <icon src="icon.png"/>
@@ -10,4 +10,6 @@
     <tizen:profile name="tv"/>
     <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
     <access origin="*" subdomains="true"/>
+    <tizen:metadata key="http://samsung.com/tv/metadata/devel.api.version" value="6.5"/>
+    <tizen:content-security-policy>default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; font-src 'self' data:; connect-src 'self' http: https: ws: wss:; media-src 'self' data: blob: http: https:; worker-src 'self' blob:</tizen:content-security-policy>
 </widget>

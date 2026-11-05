@@ -2,7 +2,7 @@
 
 > Production-Quality, High-Performance Streaming Application for Samsung Tizen Smart TVs.
 
-StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 5.0+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and a stream-resolution framework.
+StreamIndian is a fast, lightweight, and modular OTT streaming application built specifically for Samsung Tizen Smart TVs (Tizen OS 6.5+). Designed from the ground up for 10-foot remote-first experiences, StreamIndian features spatial D-pad navigation, native hardware-accelerated video playback via Samsung AVPlay (`webapis.avplay`), multi-provider metadata aggregation, and a stream-resolution framework.
 
 ---
 
@@ -123,6 +123,7 @@ UI Layer (React Views & Modals)
    npm run build:tizen
    ```
    This writes `dist/tizen/index.html`, relative assets, `config.xml`, `.tproject`, and `icon.png`. The existing `npm run build` remains the full-stack build.
+   The minimum declared runtime is Tizen 6.5 (Chromium M85), required by the module-worker implementation. The Tizen build targets Chrome 85 and includes Samsung's Web API bootstrap script; browser development continues to use the HTML video fallback. Samsung's AVPlay display surface and API bootstrap are included only in the Tizen runtime path.
 2. Ensure Samsung Tizen Studio is installed and a signing profile is configured. In PowerShell, package from the generated Tizen project directory:
    ```powershell
    Push-Location .\dist\tizen
